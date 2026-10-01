@@ -34,25 +34,4 @@ export const JobFeedSkeleton = ({ count = 6 }) => (
   </div>
 );
 
-/**
- * Skeleton detail lowongan (digunakan saat membuka modal atau transisi halaman)
- */
-export const JobDetailSkeleton = () => (
-  <div className="animate-pulse space-y-4 p-2">
-    <div className="flex items-center justify-between gap-2">
-      <div className="h-6 w-28 rounded-full bg-slate-200 dark:bg-slate-700" />
-      <div className="h-5 w-24 rounded-full bg-slate-100 dark:bg-slate-700" />
-    </div>
-    <div className="h-7 w-3/4 rounded-lg bg-slate-200 dark:bg-slate-700" />
-    <div className="h-5 w-1/2 rounded bg-slate-100 dark:bg-slate-700/60" />
-    <div className="h-16 rounded-xl bg-slate-100 dark:bg-slate-700/50" />
-    <div className="space-y-2">
-      <div className="h-4 w-full rounded bg-slate-100 dark:bg-slate-700/50" />
-      <div className="h-4 w-5/6 rounded bg-slate-100 dark:bg-slate-700/50" />
-      <div className="h-4 w-4/6 rounded bg-slate-100 dark:bg-slate-700/50" />
-    </div>
-    <div className="h-12 w-full rounded-xl bg-slate-200 dark:bg-slate-700 mt-6" />
-  </div>
-);
-
 export default JobFeedSkeleton;

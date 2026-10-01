@@ -12,7 +12,7 @@ export default class ErrorBoundary extends React.Component {
   }
 
   componentDidCatch(error, errorInfo) {
-    console.error('[Pintukarier ErrorBoundary] Caught exception:', error, errorInfo);
+    console.error('[Lokerresmi ErrorBoundary] Caught exception:', error, errorInfo);
   }
 
   handleReload = () => {

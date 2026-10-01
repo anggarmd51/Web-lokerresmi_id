@@ -12,7 +12,7 @@ const mapEmploymentType = (type = '') => {
 export const createJobPostingJsonLd = (job) => {
   if (!job) return null;
 
-  const postedDate = job.created_at || job.date || '2026-08-28T09:30:00.000Z';
+  const postedDate = job.created_at || job.date || new Date().toISOString();
   const postedDateTime = new Date(postedDate).getTime();
   const validUntilDate = !isNaN(postedDateTime)
     ? new Date(postedDateTime + 60 * 24 * 60 * 60 * 1000).toISOString()
@@ -40,20 +40,20 @@ export const createJobPostingJsonLd = (job) => {
     '@context': 'https://schema.org/',
     '@type': 'JobPosting',
     title: job.title || 'Lowongan Kerja',
-    description: fullDescription || 'Informasi lowongan kerja terverifikasi di Pintukarier.id',
+    description: fullDescription || 'Informasi lowongan kerja terverifikasi di Lokerresmi.id',
     identifier: {
       '@type': 'PropertyValue',
-      name: 'Pintukarier.id',
-      value: String(job.id || 'pk-job'),
+      name: 'Lokerresmi.id',
+      value: String(job.id || 'lr-job'),
     },
     datePosted: !isNaN(postedDateTime) ? new Date(postedDateTime).toISOString() : new Date().toISOString(),
     validThrough: validUntilDate,
     employmentType: mapEmploymentType(job.type),
     hiringOrganization: {
       '@type': 'Organization',
-      name: job.company || 'Perusahaan Mitra Pintukarier',
-      sameAs: 'https://pintukarier.vercel.app',
-      logo: 'https://pintukarier.vercel.app/logo.png',
+      name: job.company || 'Perusahaan Mitra Lokerresmi',
+      sameAs: 'https://lokerresmi.id',
+      logo: 'https://lokerresmi.id/logo.png',
     },
     jobLocation: {
       '@type': 'Place',
@@ -100,7 +100,7 @@ export default function JobPostingSchema({ job, jobs = [] }) {
 
     if (!schemaData) return;
 
-    const scriptId = 'pintukarier-google-jobs-schema';
+    const scriptId = 'lokerresmi-google-jobs-schema';
     let scriptTag = document.getElementById(scriptId);
 
     if (!scriptTag) {
@@ -113,7 +113,10 @@ export default function JobPostingSchema({ job, jobs = [] }) {
     scriptTag.textContent = JSON.stringify(schemaData, null, 2);
 
     return () => {
-      // Optional cleanup
+      const el = document.getElementById(scriptId);
+      if (el) {
+        el.remove();
+      }
     };
   }, [job, jobs]);
 

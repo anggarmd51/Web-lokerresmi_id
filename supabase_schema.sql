@@ -1,5 +1,5 @@
 -- ==============================================================================
--- SKRIP MIGRASI SUPABASE LENGKAP UNTUK PINTUKARIER.ID
+-- SKRIP MIGRASI SUPABASE LENGKAP UNTUK LOKERRESMI.ID
 -- Jalankan skrip ini di SQL Editor dashboard Supabase Anda
 -- (https://supabase.com/dashboard/project/_/sql)
 -- ==============================================================================
@@ -12,7 +12,7 @@ CREATE TABLE IF NOT EXISTS public.jobs (
   location TEXT NOT NULL DEFAULT 'Remote',
   salary TEXT,
   type TEXT DEFAULT 'Full Time',
-  desc TEXT,
+  "desc" TEXT,
   category TEXT DEFAULT 'IT & Software',
   status TEXT DEFAULT 'Menunggu Persetujuan',
   applyType TEXT DEFAULT 'whatsapp',
@@ -22,6 +22,9 @@ CREATE TABLE IF NOT EXISTS public.jobs (
   applicantsCount INT DEFAULT 0,
   created_at TIMESTAMPTZ DEFAULT NOW()
 );
+
+-- Pastikan kolom "desc" ada jika tabel jobs sudah pernah dibuat sebelumnya
+ALTER TABLE public.jobs ADD COLUMN IF NOT EXISTS "desc" TEXT;
 
 -- 2. Buat Tabel Pesanan CV Klien (cv_orders)
 CREATE TABLE IF NOT EXISTS public.cv_orders (
@@ -45,38 +48,58 @@ ALTER TABLE public.jobs ENABLE ROW LEVEL SECURITY;
 ALTER TABLE public.cv_orders ENABLE ROW LEVEL SECURITY;
 
 -- 5. Buat Kebijakan RLS (Policies) untuk Tabel jobs
+-- DROP kebijakan lama agar pembaruan aman dieksekusi berulang kali
 DROP POLICY IF EXISTS "Allow select jobs" ON public.jobs;
-CREATE POLICY "Allow select jobs" ON public.jobs
-  FOR SELECT USING (true);
+DROP POLICY IF EXISTS "Allow public select jobs" ON public.jobs;
+CREATE POLICY "Allow public select jobs" ON public.jobs
+  FOR SELECT TO anon, authenticated
+  USING (true);
 
 DROP POLICY IF EXISTS "Allow insert jobs" ON public.jobs;
-CREATE POLICY "Allow insert jobs" ON public.jobs
-  FOR INSERT WITH CHECK (true);
+DROP POLICY IF EXISTS "Allow public insert jobs" ON public.jobs;
+CREATE POLICY "Allow public insert jobs" ON public.jobs
+  FOR INSERT TO anon, authenticated
+  WITH CHECK (true);
 
 DROP POLICY IF EXISTS "Allow update jobs" ON public.jobs;
-CREATE POLICY "Allow update jobs" ON public.jobs
-  FOR UPDATE USING (true) WITH CHECK (true);
+DROP POLICY IF EXISTS "Allow authenticated update jobs" ON public.jobs;
+CREATE POLICY "Allow authenticated update jobs" ON public.jobs
+  FOR UPDATE TO authenticated
+  USING (auth.role() = 'authenticated')
+  WITH CHECK (auth.role() = 'authenticated');
 
 DROP POLICY IF EXISTS "Allow delete jobs" ON public.jobs;
-CREATE POLICY "Allow delete jobs" ON public.jobs
-  FOR DELETE USING (true);
+DROP POLICY IF EXISTS "Allow authenticated delete jobs" ON public.jobs;
+CREATE POLICY "Allow authenticated delete jobs" ON public.jobs
+  FOR DELETE TO authenticated
+  USING (auth.role() = 'authenticated');
 
 -- 6. Buat Kebijakan RLS (Policies) untuk Tabel cv_orders
+-- Melindungi privasi pelamar (PII): Hanya admin authenticated yang bisa membaca, mengedit, atau menghapus pesanan
 DROP POLICY IF EXISTS "Allow select cv_orders" ON public.cv_orders;
-CREATE POLICY "Allow select cv_orders" ON public.cv_orders
-  FOR SELECT USING (true);
+DROP POLICY IF EXISTS "Allow authenticated select cv_orders" ON public.cv_orders;
+CREATE POLICY "Allow authenticated select cv_orders" ON public.cv_orders
+  FOR SELECT TO authenticated
+  USING (auth.role() = 'authenticated');
 
 DROP POLICY IF EXISTS "Allow insert cv_orders" ON public.cv_orders;
-CREATE POLICY "Allow insert cv_orders" ON public.cv_orders
-  FOR INSERT WITH CHECK (true);
+DROP POLICY IF EXISTS "Allow public insert cv_orders" ON public.cv_orders;
+CREATE POLICY "Allow public insert cv_orders" ON public.cv_orders
+  FOR INSERT TO anon, authenticated
+  WITH CHECK (true);
 
 DROP POLICY IF EXISTS "Allow update cv_orders" ON public.cv_orders;
-CREATE POLICY "Allow update cv_orders" ON public.cv_orders
-  FOR UPDATE USING (true) WITH CHECK (true);
+DROP POLICY IF EXISTS "Allow authenticated update cv_orders" ON public.cv_orders;
+CREATE POLICY "Allow authenticated update cv_orders" ON public.cv_orders
+  FOR UPDATE TO authenticated
+  USING (auth.role() = 'authenticated')
+  WITH CHECK (auth.role() = 'authenticated');
 
 DROP POLICY IF EXISTS "Allow delete cv_orders" ON public.cv_orders;
-CREATE POLICY "Allow delete cv_orders" ON public.cv_orders
-  FOR DELETE USING (true);
+DROP POLICY IF EXISTS "Allow authenticated delete cv_orders" ON public.cv_orders;
+CREATE POLICY "Allow authenticated delete cv_orders" ON public.cv_orders
+  FOR DELETE TO authenticated
+  USING (auth.role() = 'authenticated');
 
 -- 7. Data Awal Contoh untuk cv_orders (Optional)
 INSERT INTO public.cv_orders (name, whatsapp, package, status, date)
@@ -89,24 +112,34 @@ ON CONFLICT DO NOTHING;
 CREATE TABLE IF NOT EXISTS public.site_stats (
   id INT PRIMARY KEY DEFAULT 1,
   total_views INT DEFAULT 0,
-  updated_at TIMESTAMPTZ DEFAULT NOW()
+  updated_at TIMESTAMP WITH TIME ZONE DEFAULT NOW()
 );
+
+-- Pastikan kolom updated_at ada jika tabel site_stats sudah pernah dibuat sebelumnya
+ALTER TABLE public.site_stats ADD COLUMN IF NOT EXISTS updated_at TIMESTAMP WITH TIME ZONE DEFAULT NOW();
 
 -- Hak Akses untuk site_stats
 GRANT ALL ON TABLE public.site_stats TO anon, authenticated, service_role;
 ALTER TABLE public.site_stats ENABLE ROW LEVEL SECURITY;
 
 DROP POLICY IF EXISTS "Allow select site_stats" ON public.site_stats;
-CREATE POLICY "Allow select site_stats" ON public.site_stats
-  FOR SELECT USING (true);
+DROP POLICY IF EXISTS "Allow public select site_stats" ON public.site_stats;
+CREATE POLICY "Allow public select site_stats" ON public.site_stats
+  FOR SELECT TO anon, authenticated
+  USING (true);
 
 DROP POLICY IF EXISTS "Allow insert site_stats" ON public.site_stats;
-CREATE POLICY "Allow insert site_stats" ON public.site_stats
-  FOR INSERT WITH CHECK (true);
+DROP POLICY IF EXISTS "Allow authenticated insert site_stats" ON public.site_stats;
+CREATE POLICY "Allow authenticated insert site_stats" ON public.site_stats
+  FOR INSERT TO authenticated
+  WITH CHECK (auth.role() = 'authenticated');
 
 DROP POLICY IF EXISTS "Allow update site_stats" ON public.site_stats;
-CREATE POLICY "Allow update site_stats" ON public.site_stats
-  FOR UPDATE USING (true) WITH CHECK (true);
+DROP POLICY IF EXISTS "Allow authenticated update site_stats" ON public.site_stats;
+CREATE POLICY "Allow authenticated update site_stats" ON public.site_stats
+  FOR UPDATE TO authenticated
+  USING (auth.role() = 'authenticated')
+  WITH CHECK (auth.role() = 'authenticated');
 
 -- Inisialisasi baris pertama jika belum ada (id=1, default total_views=0)
 INSERT INTO public.site_stats (id, total_views, updated_at)

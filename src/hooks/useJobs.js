@@ -22,8 +22,7 @@ export default function useJobs() {
       } else {
         setJobs([]);
       }
-    } catch (error) {
-      console.warn('Gagal memuat data lowongan dari Supabase:', error.message);
+    } catch {
       setJobs([]);
     } finally {
       setLoading(false);
@@ -41,6 +40,5 @@ export default function useJobs() {
     activeJobs,
     loading,
     setJobs,
-    refetch: fetchJobs,
   };
 }

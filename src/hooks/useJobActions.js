@@ -1,15 +1,13 @@
 import { toast } from 'react-hot-toast';
 import { supabase } from '../lib/supabase';
-
-const sortJobsByFeatured = (items = []) =>
-  [...items].sort((a, b) => Number(b.featured || false) - Number(a.featured || false));
+import { sortJobsByFeatured } from '../lib/utils';
 
 const isRlsError = (error) => {
   const message = String(error?.message || '').toLowerCase();
   return error?.code === '42501' || message.includes('row-level security') || message.includes('permission denied for table');
 };
 
-export default function useJobActions({ jobs, setJobs }) {
+export default function useJobActions({ setJobs }) {
   const updateLocalJobs = (updater) => {
     setJobs((prevJobs) => {
       const nextJobs = typeof updater === 'function' ? updater(prevJobs) : updater;
@@ -56,8 +54,7 @@ export default function useJobActions({ jobs, setJobs }) {
       updateLocalJobs((prevJobs) => sortJobsByFeatured([insertedJob, ...prevJobs]));
       toast.success('Lowongan berhasil dikirim dan menunggu persetujuan admin.');
       return insertedJob;
-    } catch (error) {
-      console.error('Gagal menambah lowongan:', error.message);
+    } catch {
       return null;
     }
   };
@@ -82,7 +79,6 @@ export default function useJobActions({ jobs, setJobs }) {
 
       return true;
     } catch (error) {
-      console.error('Gagal memperbarui lowongan:', error.message);
       if (isRlsError(error)) {
         toast.error('Akses UPDATE dibatasi oleh RLS Supabase. Pastikan akun admin terautentikasi dan policy UPDATE sudah diizinkan.');
       }
@@ -113,7 +109,6 @@ export default function useJobActions({ jobs, setJobs }) {
       toast.success(`Status lowongan berhasil diperbarui menjadi ${newStatus}.`);
       return true;
     } catch (error) {
-      console.error('Gagal mengubah status lowongan:', error.message);
       updateLocalJobs((prevJobs) =>
         prevJobs.map((job) =>
           job.id === id ? { ...job, status: newStatus } : job
@@ -150,7 +145,6 @@ export default function useJobActions({ jobs, setJobs }) {
       toast.success(`Status Premium lowongan ${newVal ? 'diaktifkan' : 'dinonaktifkan'}.`);
       return true;
     } catch (error) {
-      console.error('Gagal mengubah status premium lowongan:', error.message);
       updateLocalJobs((prevJobs) =>
         sortJobsByFeatured(
           prevJobs.map((job) =>
@@ -172,21 +166,19 @@ export default function useJobActions({ jobs, setJobs }) {
       const { error } = await supabase.from('jobs').delete().eq('id', id);
 
       if (error) {
-        alert('Gagal menghapus data: ' + error.message);
+        toast.error('Gagal menghapus data: ' + error.message);
         throw error;
       }
 
       updateLocalJobs((prevJobs) => prevJobs.filter((job) => job.id !== id));
       toast.success('Lowongan berhasil dihapus permanen dari Supabase.');
       return true;
-    } catch (error) {
-      console.error('Gagal menghapus lowongan:', error.message);
+    } catch {
       return false;
     }
   };
 
   return {
-    jobs,
     createJob,
     updateJob,
     updateJobStatus,

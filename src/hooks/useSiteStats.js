@@ -1,19 +1,17 @@
 import { useState, useEffect, useCallback, useRef } from 'react';
 import { supabase } from '../lib/supabase';
 
-const SESSION_STORAGE_KEY = 'pintukarier_visit_logged_v1';
+const SESSION_STORAGE_KEY = 'lokerresmi_visit_logged_v1';
 
 export default function useSiteStats() {
   const [totalViews, setTotalViews] = useState(0);
   const [loading, setLoading] = useState(true);
-  const [error, setError] = useState(null);
   const [isLive, setIsLive] = useState(false);
   const hasRecordedRef = useRef(false);
 
   // Fungsi membaca statistik saat ini dari Supabase
   const fetchStats = useCallback(async () => {
     setLoading(true);
-    setError(null);
     try {
       const { data, error: fetchErr } = await supabase
         .from('site_stats')
@@ -22,8 +20,6 @@ export default function useSiteStats() {
         .maybeSingle();
 
       if (fetchErr) {
-        console.warn('[Supabase] site_stats query note:', fetchErr.message);
-        setError(fetchErr);
         setTotalViews(0);
       } else if (data) {
         const viewsCount =
@@ -38,9 +34,7 @@ export default function useSiteStats() {
       } else {
         setTotalViews(0);
       }
-    } catch (err) {
-      console.warn('[Supabase] site_stats exception:', err.message);
-      setError(err);
+    } catch {
       setTotalViews(0);
     } finally {
       setLoading(false);
@@ -74,7 +68,6 @@ export default function useSiteStats() {
         .maybeSingle();
 
       if (checkErr) {
-        console.warn('[Supabase] site_stats record error (RLS/Permissions):', checkErr.message);
         return;
       }
 
@@ -94,8 +87,6 @@ export default function useSiteStats() {
 
         if (!updateErr) {
           setTotalViews(newCount);
-        } else {
-          console.warn('[Supabase] Gagal update site_stats row:', updateErr.message);
         }
       } else {
         // Jika tabel kosong, insert baris pertama dengan nilai 1
@@ -113,8 +104,8 @@ export default function useSiteStats() {
           setTotalViews(1);
         }
       }
-    } catch (err) {
-      console.warn('[Supabase] Exception saat mencatat page view:', err.message);
+    } catch {
+      // ignore
     }
   }, []);
 
@@ -152,8 +143,8 @@ export default function useSiteStats() {
             }
           });
       }
-    } catch (realtimeErr) {
-      console.warn('[Supabase Realtime] Tidak dapat terhubung ke channel:', realtimeErr.message);
+    } catch {
+      // ignore realtime errors
     }
 
     return () => {
@@ -166,7 +157,6 @@ export default function useSiteStats() {
   return {
     totalViews,
     loading,
-    error,
     isLive,
     fetchStats,
     recordPageView,

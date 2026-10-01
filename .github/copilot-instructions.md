@@ -1,4 +1,4 @@
-# Panduan Koding Proyek Pintukarier
+# Panduan Koding Proyek Lokerresmi
 - Gunakan React Functional Components dengan Hooks.
 - Styling wajib menggunakan Tailwind CSS.
 - Integrasi database harus menggunakan modul `supabase` dari `src/lib/supabase.js`.

@@ -1,18 +1,21 @@
 import React, { useCallback, useEffect, useMemo, useState } from 'react';
-import { Calendar, Facebook, Instagram, Linkedin, Moon, Music2, Search, SearchX, Sun } from 'lucide-react';
+import { Calendar, Facebook, Instagram, Linkedin, Moon, Music2, Search, SearchX, Sun, Sparkles, FileText } from 'lucide-react';
 import { toast } from 'react-hot-toast';
 import { supabase } from '../lib/supabase';
+import { sortJobsByFeatured } from '../lib/utils';
 import useAuth from '../hooks/useAuth';
 import useJobs from '../hooks/useJobs';
 import useJobActions from '../hooks/useJobActions';
-import useJobForm from '../hooks/useJobForm';
 import useCVOrders from '../hooks/useCVOrders';
 import useSiteStats from '../hooks/useSiteStats';
 import useDarkMode from '../hooks/useDarkMode';
+import AdminLoginModal from './AdminLoginModal';
 import RequirementsInput, { parseRequirements, formatRequirementsToText } from './RequirementsInput';
 import { JobFeedSkeleton } from './LoadingSkeleton';
 import JobPostingSchema from './JobPostingSchema';
 import QuickShareButton from './QuickShareButton';
+import AICVCheckerModal from './AICVCheckerModal';
+import AICoverLetterModal from './AICoverLetterModal';
 
 const publicCategories = ['IT & Software', 'Sales & Marketing', 'Keuangan/Akuntansi', 'HRD/Personalia', 'Administrasi', 'Teknik/Engineering', 'Logistik/Operasional', 'Pelayanan Pelanggan'];
 
@@ -36,9 +39,6 @@ const formatJobTime = (dateVal) => {
   return `${hours}:${minutes} WIB`;
 };
 
-const sortJobsByFeatured = (items = []) =>
-  [...items].sort((a, b) => Number(b.featured || b.is_featured || false) - Number(a.featured || a.is_featured || false));
-
 const setMetaTag = (selector, attr, value, content) => {
   let tag = document.head.querySelector(selector);
 
@@ -52,16 +52,16 @@ const setMetaTag = (selector, attr, value, content) => {
 };
 
 const updateOpenGraphMeta = (job = null) => {
-  const siteName = 'Pintukarier.id';
-  const defaultTitle = 'Pintukarier.id | Portal Lowongan Kerja & CV ATS';
-  const defaultDescription = 'Temukan lowongan kerja terbaru, peluang karier, dan layanan pembuatan CV ATS profesional di Pintukarier.id.';
-  const defaultImage = '/IMG-20260728-WA0012 (1).png';
+  const siteName = 'Lokerresmi.id';
+  const defaultTitle = 'Lokerresmi.id | Portal Lowongan Kerja & CV ATS';
+  const defaultDescription = 'Temukan lowongan kerja terbaru, peluang karier, dan layanan pembuatan CV ATS profesional di Lokerresmi.id.';
+  const defaultImage = '/logo_og.png';
 
   document.title = job ? `${job.title} | ${job.company} - ${siteName}` : defaultTitle;
 
   setMetaTag('meta[property="og:title"]', 'property', 'og:title', job ? `${job.title} di ${job.company}` : defaultTitle);
   setMetaTag('meta[property="og:description"]', 'property', 'og:description', job ? `${job.company} • ${job.location} • ${job.salary}. ${job.desc?.slice(0, 150) || 'Lihat detail lowongan dan segera kirim lamaran.'}` : defaultDescription);
-  setMetaTag('meta[property="og:image"]', 'property', 'og:image', job ? defaultImage : defaultImage);
+  setMetaTag('meta[property="og:image"]', 'property', 'og:image', defaultImage);
   setMetaTag('meta[property="og:url"]', 'property', 'og:url', window.location.href);
   setMetaTag('meta[property="og:site_name"]', 'property', 'og:site_name', siteName);
   setMetaTag('meta[name="twitter:title"]', 'name', 'twitter:title', job ? `${job.title} di ${job.company}` : defaultTitle);
@@ -84,9 +84,9 @@ const Navbar = ({ onOpenPostJob, onOpenAdminLogin, isAdmin, isDark, toggleDarkMo
         <div className="flex flex-col gap-2.5 sm:flex-row sm:items-center sm:justify-between">
           <div className="flex items-center justify-between sm:justify-start gap-2.5 sm:gap-3">
             <div className="flex items-center gap-2.5 sm:gap-3 cursor-pointer group" onClick={() => window.scrollTo({ top: 0, behavior: 'smooth' })}>
-              <img src="/logo.png" alt="Logo Pintukarier" className="h-9 sm:h-10 w-auto object-contain" />
+              <img src="/logo.png" alt="Logo Lokerresmi.id" className="h-9 sm:h-10 w-auto object-contain" />
               <div className="flex items-center bg-navy px-2.5 sm:px-3 py-1.5 sm:py-2.5 rounded-xl shadow-xs ring-1 ring-slate-200/10">
-                <span className="antialiased text-[10px] sm:text-xs lg:text-sm font-bold text-white tracking-[0.16em] sm:tracking-[0.24em] uppercase whitespace-nowrap">PINTU KARIER.ID</span>
+                <span className="antialiased text-[10px] sm:text-xs lg:text-sm font-bold text-white tracking-[0.16em] sm:tracking-[0.24em] uppercase whitespace-nowrap">LOKER RESMI.ID</span>
               </div>
             </div>
 
@@ -263,22 +263,20 @@ const StatsBar = ({ totalJobs, totalCompanies, totalApplicants }) => (
 const JobFeed = ({ jobs, onSelectJob, searchTerm, selectedTag, onResetFilters, loading }) => {
   const [visibleCount, setVisibleCount] = useState(6);
 
-  const filteredJobs = jobs.filter((job) => {
-    // Sembunyikan lowongan tidak aktif dari halaman publik
-    if (job.status !== 'Aktif') return false;
+  const filteredJobs = sortJobsByFeatured(
+    jobs.filter((job) => {
+      // Sembunyikan lowongan tidak aktif dari halaman publik
+      if (job.status !== 'Aktif') return false;
 
-    const search = (searchTerm || '').toLowerCase();
-    const matchesSearch =
-      (job.title && job.title.toLowerCase().includes(search)) ||
-      (job.company && job.company.toLowerCase().includes(search)) ||
-      (job.location && job.location.toLowerCase().includes(search));
-    const matchesTag = !selectedTag || selectedTag === 'Semua' || job.category === selectedTag;
-    return matchesSearch && matchesTag;
-  }).sort((a, b) => {
-    const aFeatured = a.featured || a.is_featured || false;
-    const bFeatured = b.featured || b.is_featured || false;
-    return (bFeatured ? 1 : 0) - (aFeatured ? 1 : 0);
-  });
+      const search = (searchTerm || '').toLowerCase();
+      const matchesSearch =
+        (job.title && job.title.toLowerCase().includes(search)) ||
+        (job.company && job.company.toLowerCase().includes(search)) ||
+        (job.location && job.location.toLowerCase().includes(search));
+      const matchesTag = !selectedTag || selectedTag === 'Semua' || job.category === selectedTag;
+      return matchesSearch && matchesTag;
+    })
+  );
 
   useEffect(() => {
     setVisibleCount(6);
@@ -379,34 +377,122 @@ const JobFeed = ({ jobs, onSelectJob, searchTerm, selectedTag, onResetFilters, l
   );
 };
 
-const CVServicePromo = ({ onOrderCV }) => (
-  <div id="cv-service" className="bg-gradient-to-r from-navy to-[#2A3D63] py-10 sm:py-16 text-white my-8 sm:my-12">
-    <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 flex flex-col md:flex-row items-center justify-between gap-6 sm:gap-8">
-      <div className="max-w-xl text-center md:text-left">
-        <span className="bg-teal/20 text-teal text-[10px] sm:text-xs font-bold px-3 py-1 rounded-full uppercase tracking-wider">Layanan Karir Profesional</span>
-        <h2 className="text-2xl sm:text-3xl font-extrabold mt-3 mb-3 sm:mb-4">Buat CV ATS-Friendly & Optimasi LinkedIn</h2>
-        <p className="text-slate-300 text-xs sm:text-sm md:text-base mb-6 leading-relaxed">Sering ditolak sistem ATS perusahaan? Tingkatkan peluang lolos seleksi HR hingga 3x lipat dengan format CV standar industri.</p>
-        <button onClick={onOrderCV} className="bg-teal hover:bg-teal/95 active:bg-teal text-navy font-bold px-6 py-3.5 sm:py-3 rounded-xl shadow-xs transition w-full sm:w-auto text-xs sm:text-sm cursor-pointer active:scale-98">Pesan Pembuatan CV Sekarang</button>
-      </div>
-      <div className="bg-white/15 backdrop-blur-md p-5 sm:p-6 rounded-2xl border border-white/15 max-w-sm w-full">
-        <h3 className="font-bold text-base sm:text-lg mb-3">Paket Unggulan</h3>
-        <ul className="space-y-2 text-xs sm:text-sm text-slate-200 mb-5 sm:mb-6">
-          <li>✓ Format ATS Teruji & Lolos HR</li>
-          <li>✓ Redaksi Bahasa Profesional & SEO</li>
-          <li>✓ Konsultasi & Revisi Tanpa Batas</li>
-        </ul>
-        <div className="text-teal font-extrabold text-lg sm:text-xl">Mulai Rp 99.000</div>
+const CVServicePromo = ({ onSelectPackage, onOpenAIChecker, onOpenCoverLetter }) => {
+  return (
+    <div id="cv-service" className="bg-gradient-to-r from-navy to-[#2A3D63] py-10 sm:py-16 text-white my-8 sm:my-12">
+      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+        <div className="text-center max-w-2xl mx-auto mb-8 sm:mb-10">
+          <span className="bg-teal/20 text-teal text-[10px] sm:text-xs font-bold px-3 py-1 rounded-full uppercase tracking-wider inline-block">
+            Layanan Karir Profesional
+          </span>
+          <h2 className="text-2xl sm:text-3xl font-extrabold mt-3 mb-3 sm:mb-4">
+            Buat CV ATS-Friendly & Optimasi LinkedIn
+          </h2>
+          <p className="text-slate-300 text-xs sm:text-sm md:text-base mb-6 leading-relaxed">
+            Sering ditolak sistem ATS perusahaan? Tingkatkan peluang lolos seleksi HR hingga 3x lipat dengan format CV standar industri.
+          </p>
+          <div className="flex flex-col sm:flex-row items-center justify-center gap-3">
+            <button
+              type="button"
+              onClick={onOpenAIChecker}
+              className="bg-teal hover:bg-teal/95 active:bg-teal text-navy font-bold px-5 py-3.5 sm:py-3 rounded-xl shadow-xs transition w-full sm:w-auto text-xs sm:text-sm cursor-pointer active:scale-98 inline-flex items-center justify-center gap-2"
+            >
+              <Sparkles className="h-4 w-4" />
+              <span>Cek Skor CV dengan AI (Gratis)</span>
+            </button>
+            <button
+              type="button"
+              onClick={onOpenCoverLetter}
+              className="bg-white/15 hover:bg-white/25 active:bg-white/20 text-white font-bold px-5 py-3.5 sm:py-3 rounded-xl border border-white/20 shadow-xs transition w-full sm:w-auto text-xs sm:text-sm cursor-pointer active:scale-98 inline-flex items-center justify-center gap-2"
+            >
+              <FileText className="h-4 w-4 text-teal" />
+              <span>AI Cover Letter Generator (Gratis)</span>
+            </button>
+          </div>
+        </div>
+
+        {/* Horizontal scrollable pricing cards slider */}
+        <div className="flex overflow-x-auto snap-x gap-4 pb-4 pt-2 -mx-4 px-4 sm:mx-0 sm:px-0">
+          {/* Tier 1: Paket Express */}
+          <div className="snap-start shrink-0 w-[285px] sm:w-[320px] md:flex-1 bg-white/10 backdrop-blur-md p-5 sm:p-6 rounded-2xl border border-white/15 flex flex-col justify-between transition hover:border-white/30">
+            <div>
+              <div className="flex items-center justify-between mb-2">
+                <h3 className="font-bold text-base sm:text-lg text-white">Paket Express</h3>
+              </div>
+              <div className="text-teal font-extrabold text-2xl sm:text-3xl mb-4">Rp 49.000</div>
+              <ul className="space-y-2.5 text-xs sm:text-sm text-slate-200 mb-6">
+                <li className="flex items-start gap-2"><span className="text-teal font-bold">✓</span><span>Format ATS Teruji</span></li>
+                <li className="flex items-start gap-2"><span className="text-teal font-bold">✓</span><span>Template Premium</span></li>
+                <li className="flex items-start gap-2"><span className="text-teal font-bold">✓</span><span>AI Generated Content</span></li>
+              </ul>
+            </div>
+            <button
+              type="button"
+              onClick={() => onSelectPackage('Paket Express (Rp 49.000)')}
+              className="w-full bg-white/15 hover:bg-white/25 active:bg-white/20 text-white font-bold py-2.5 sm:py-3 rounded-xl transition cursor-pointer text-xs sm:text-sm active:scale-98"
+            >
+              Pilih Paket
+            </button>
+          </div>
+
+          {/* Tier 2: Paket Profesional (Populer) */}
+          <div className="snap-start shrink-0 w-[285px] sm:w-[320px] md:flex-1 bg-white/15 backdrop-blur-md p-5 sm:p-6 rounded-2xl border-2 border-teal relative flex flex-col justify-between shadow-xl transition hover:border-teal/80">
+            <div className="absolute -top-3 right-5 bg-teal text-navy text-[10px] sm:text-xs font-black px-3 py-0.5 rounded-full uppercase tracking-wider shadow-sm">
+              Populer
+            </div>
+            <div>
+              <div className="flex items-center justify-between mb-2">
+                <h3 className="font-bold text-base sm:text-lg text-white">Paket Profesional</h3>
+              </div>
+              <div className="text-teal font-extrabold text-2xl sm:text-3xl mb-4">Rp 99.000</div>
+              <ul className="space-y-2.5 text-xs sm:text-sm text-slate-100 mb-6">
+                <li className="flex items-start gap-2"><span className="text-teal font-bold">✓</span><span>Format ATS Teruji & Lolos HR</span></li>
+                <li className="flex items-start gap-2"><span className="text-teal font-bold">✓</span><span>Redaksi Bahasa Profesional & SEO</span></li>
+                <li className="flex items-start gap-2"><span className="text-teal font-bold">✓</span><span>Konsultasi & Revisi Tanpa Batas</span></li>
+              </ul>
+            </div>
+            <button
+              type="button"
+              onClick={() => onSelectPackage('Paket Profesional (Rp 99.000)')}
+              className="w-full bg-teal hover:bg-teal/90 active:bg-teal text-navy font-black py-2.5 sm:py-3 rounded-xl transition cursor-pointer text-xs sm:text-sm active:scale-98 shadow-sm"
+            >
+              Pilih Paket
+            </button>
+          </div>
+
+          {/* Tier 3: Paket VIP Mentoring */}
+          <div className="snap-start shrink-0 w-[285px] sm:w-[320px] md:flex-1 bg-white/10 backdrop-blur-md p-5 sm:p-6 rounded-2xl border border-white/15 flex flex-col justify-between transition hover:border-white/30">
+            <div>
+              <div className="flex items-center justify-between mb-2">
+                <h3 className="font-bold text-base sm:text-lg text-white">Paket VIP Mentoring</h3>
+              </div>
+              <div className="text-teal font-extrabold text-2xl sm:text-3xl mb-4">Rp 249.000</div>
+              <ul className="space-y-2.5 text-xs sm:text-sm text-slate-200 mb-6">
+                <li className="flex items-start gap-2"><span className="text-teal font-bold">✓</span><span>Semua di Paket Pro</span></li>
+                <li className="flex items-start gap-2"><span className="text-teal font-bold">✓</span><span>Simulasi Interview HR</span></li>
+                <li className="flex items-start gap-2"><span className="text-teal font-bold">✓</span><span>Prioritas Rekomendasi Loker B2B</span></li>
+              </ul>
+            </div>
+            <button
+              type="button"
+              onClick={() => onSelectPackage('Paket VIP Mentoring (Rp 249.000)')}
+              className="w-full bg-white/15 hover:bg-white/25 active:bg-white/20 text-white font-bold py-2.5 sm:py-3 rounded-xl transition cursor-pointer text-xs sm:text-sm active:scale-98"
+            >
+              Pilih Paket
+            </button>
+          </div>
+        </div>
       </div>
     </div>
-  </div>
-);
+  );
+};
 
 const CommunitySection = () => (
   <div id="community" className="py-8 sm:py-12 max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 text-center">
     <div className="bg-teal/10 border border-teal/20 rounded-2xl p-6 sm:p-12 shadow-xs">
-      <h2 className="text-xl sm:text-3xl font-bold text-navy mb-2 sm:mb-3">Gabung Komunitas Loker Pintukarier.id</h2>
+      <h2 className="text-xl sm:text-3xl font-bold text-navy mb-2 sm:mb-3">Gabung Komunitas Loker Resmi (Lokerresmi.id)</h2>
       <p className="text-slate-600 max-w-xl mx-auto mb-5 sm:mb-6 text-xs sm:text-sm leading-relaxed">Dapatkan info lowongan kerja pilihan setiap hari langsung di handphone-mu tanpa ketinggalan.</p>
-      <a href="https://chat.whatsapp.com/E00jf6uXmuF742oQjkvn39?s=cl&p=a&mlu=4" target="_blank" className="bg-teal hover:bg-teal/90 active:bg-teal text-navy font-bold px-6 sm:px-8 py-3.5 sm:py-3 rounded-xl shadow-xs transition inline-block w-full sm:w-auto text-xs sm:text-sm cursor-pointer active:scale-98">Gabung Grup Komunitas Loker</a>
+      <a href="https://chat.whatsapp.com/E00jf6uXmuF742oQjkvn39?s=cl&p=a&mlu=4" target="_blank" rel="noopener noreferrer" className="bg-teal hover:bg-teal/90 active:bg-teal text-navy font-bold px-6 sm:px-8 py-3.5 sm:py-3 rounded-xl shadow-xs transition inline-block w-full sm:w-auto text-xs sm:text-sm cursor-pointer active:scale-98">Gabung Grup Komunitas Loker</a>
     </div>
   </div>
 );
@@ -415,38 +501,38 @@ const Footer = () => (
   <footer className="bg-navy text-white pt-12 pb-6 border-t border-slate-800">
     <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 text-center">
       <div className="inline-block bg-white/5 px-4 py-2 rounded-xl mb-2">
-        <span className="text-lg font-bold tracking-[0.2em] uppercase text-white">PINTU KARIER.ID</span>
+        <span className="text-lg font-bold tracking-[0.2em] uppercase text-white">LOKERRESMI.ID</span>
       </div>
-      <p className="text-slate-400 text-sm mb-5 max-w-lg mx-auto">Pintu Menuju Karier Impianmu • Platform Informasi Lowongan Kerja & B2B Talent Terpercaya.</p>
+      <p className="text-slate-400 text-sm mb-5 max-w-lg mx-auto">Peluang Karier Resmi & Terverifikasi • Platform Informasi Lowongan Kerja & B2B Talent Terpercaya.</p>
 
       <div className="mb-5 flex flex-wrap items-center justify-center gap-3">
-        <a href="https://www.instagram.com/pintukarier.id?igsi=bTZmamhmbnNkYmto" target="_blank" rel="noreferrer" aria-label="Instagram Pintukarier.id" className="group inline-flex items-center gap-2 rounded-full border border-white/15 bg-white/5 px-3 py-2 text-sm text-slate-200 transition-all duration-300 hover:-translate-y-0.5 hover:border-pink-400/60 hover:bg-gradient-to-r hover:from-pink-500/20 hover:to-orange-400/20 hover:text-white">
+        <a href="https://www.instagram.com/lokerresmi_id?stkn=MWtwcTJjbnUydHVsag==" target="_blank" rel="noopener noreferrer" aria-label="Instagram Lokerresmi.id" className="group inline-flex items-center gap-2 rounded-full border border-white/15 bg-white/5 px-3 py-2 text-sm text-slate-200 transition-all duration-300 hover:-translate-y-0.5 hover:border-pink-400/60 hover:bg-gradient-to-r hover:from-pink-500/20 hover:to-orange-400/20 hover:text-white">
           <span className="flex h-8 w-8 items-center justify-center rounded-full bg-white/10 text-pink-300 transition-colors duration-300 group-hover:bg-pink-500/20 group-hover:text-pink-200">
             <Instagram className="h-4 w-4" />
           </span>
-          <span className="font-medium">@pintukarier.id</span>
+          <span className="font-medium">@lokerresmi_id</span>
         </a>
-        <a href="https://www.tiktok.com/@pintukarier.id?_r=1&_t=ZS-99NYB9OYGmb" target="_blank" rel="noreferrer" aria-label="TikTok Pintukarier.id" className="group inline-flex items-center gap-2 rounded-full border border-white/15 bg-white/5 px-3 py-2 text-sm text-slate-200 transition-all duration-300 hover:-translate-y-0.5 hover:border-slate-300/60 hover:bg-slate-100/10 hover:text-white">
+        <a href="https://www.tiktok.com/@lokerresmi_id?_r=1&_t=ZS-9A9A8EQU2js" target="_blank" rel="noopener noreferrer" aria-label="TikTok Lokerresmi.id" className="group inline-flex items-center gap-2 rounded-full border border-white/15 bg-white/5 px-3 py-2 text-sm text-slate-200 transition-all duration-300 hover:-translate-y-0.5 hover:border-slate-300/60 hover:bg-slate-100/10 hover:text-white">
           <span className="flex h-8 w-8 items-center justify-center rounded-full bg-white/10 text-slate-200 transition-colors duration-300 group-hover:bg-slate-100/20 group-hover:text-white">
             <Music2 className="h-4 w-4" />
           </span>
-          <span className="font-medium">@pintukarier.id</span>
+          <span className="font-medium">@lokerresmi_id</span>
         </a>
-        <a href="https://www.linkedin.com/company/pintukarierid/" target="_blank" rel="noreferrer" aria-label="LinkedIn Pintukarier.id" className="group inline-flex items-center gap-2 rounded-full border border-white/15 bg-white/5 px-3 py-2 text-sm text-slate-200 transition-all duration-300 hover:-translate-y-0.5 hover:border-blue-400/60 hover:bg-blue-500/10 hover:text-white">
+        <a href="https://www.linkedin.com/company/lokerresmiid/" target="_blank" rel="noopener noreferrer" aria-label="LinkedIn Lokerresmi.id" className="group inline-flex items-center gap-2 rounded-full border border-white/15 bg-white/5 px-3 py-2 text-sm text-slate-200 transition-all duration-300 hover:-translate-y-0.5 hover:border-blue-400/60 hover:bg-blue-500/10 hover:text-white">
           <span className="flex h-8 w-8 items-center justify-center rounded-full bg-white/10 text-blue-300 transition-colors duration-300 group-hover:bg-blue-500/20 group-hover:text-blue-100">
             <Linkedin className="h-4 w-4" />
           </span>
-          <span className="font-medium">pintukarier.id</span>
+          <span className="font-medium">lokerresmiid</span>
         </a>
-        <a href="https://www.facebook.com/share/1KyKUkA7UQ/" target="_blank" rel="noreferrer" aria-label="Facebook Pintukarier.id" className="group inline-flex items-center gap-2 rounded-full border border-white/15 bg-white/5 px-3 py-2 text-sm text-slate-200 transition-all duration-300 hover:-translate-y-0.5 hover:border-blue-500/60 hover:bg-blue-600/10 hover:text-white">
+        <a href="https://www.facebook.com/lokerresmi.id" target="_blank" rel="noopener noreferrer" aria-label="Facebook Lokerresmi.id" className="group inline-flex items-center gap-2 rounded-full border border-white/15 bg-white/5 px-3 py-2 text-sm text-slate-200 transition-all duration-300 hover:-translate-y-0.5 hover:border-blue-500/60 hover:bg-blue-600/10 hover:text-white">
           <span className="flex h-8 w-8 items-center justify-center rounded-full bg-white/10 text-blue-400 transition-colors duration-300 group-hover:bg-blue-600/20 group-hover:text-blue-100">
             <Facebook className="h-4 w-4" />
           </span>
-          <span className="font-medium">pintukarier.id</span>
+          <span className="font-medium">lokerresmi.id</span>
         </a>
       </div>
 
-      <p className="text-slate-500 text-xs">© {new Date().getFullYear()} Pintukarier.id. Seluruh hak cipta dilindungi.</p>
+      <p className="text-slate-500 text-xs">© {new Date().getFullYear()} Lokerresmi.id. Seluruh hak cipta dilindungi.</p>
     </div>
   </footer>
 );
@@ -486,8 +572,8 @@ const JobDetailModal = ({ job, onClose, onApplyTrack }) => {
         return;
       }
 
-      const message = encodeURIComponent(`Halo, saya ingin melamar posisi ${job.title} di ${job.company} melalui Pintukarier.id`);
-      window.open(`https://wa.me/${normalizedWa}?text=${message}`, '_blank');
+      const message = encodeURIComponent(`Halo, saya ingin melamar posisi ${job.title} di ${job.company} melalui Lokerresmi.id`);
+      window.open(`https://wa.me/${normalizedWa}?text=${message}`, '_blank', 'noopener,noreferrer');
       toast.success(`Lamaran untuk ${job.title} siap dikirim melalui WhatsApp.`);
       return;
     }
@@ -500,7 +586,7 @@ const JobDetailModal = ({ job, onClose, onApplyTrack }) => {
 
     let targetUrl = safeTarget;
     if (!targetUrl.startsWith('http')) targetUrl = 'https://' + targetUrl;
-    window.open(targetUrl, '_blank');
+    window.open(targetUrl, '_blank', 'noopener,noreferrer');
     toast.success(`Lamaran untuk ${job.title} sedang dibuka di form pelamaran.`);
   };
 
@@ -554,7 +640,7 @@ const JobDetailModal = ({ job, onClose, onApplyTrack }) => {
             </h3>
             <ul className="space-y-2 text-slate-600 dark:text-slate-300 text-xs sm:text-sm bg-slate-50/80 dark:bg-slate-800/60 p-3.5 sm:p-4 rounded-xl border border-slate-200/70 dark:border-slate-700">
               {jobReqs.map((req, idx) => (
-                <li key={idx} className="flex items-start gap-2.5">
+                <li key={`job-req-${job.id || 'curr'}-${idx}`} className="flex items-start gap-2.5">
                   <span className="h-1.5 w-1.5 rounded-full bg-teal mt-1.5 shrink-0" />
                   <span className="leading-relaxed">{req}</span>
                 </li>
@@ -574,26 +660,51 @@ const JobDetailModal = ({ job, onClose, onApplyTrack }) => {
   );
 };
 
-const OrderCVModal = ({ isOpen, onClose, onSubmitOrder }) => {
+const OrderCVModal = ({ isOpen, onClose, onSubmitOrder, selectedPackage = 'Paket Profesional (Rp 99.000)' }) => {
   const [name, setName] = useState('');
   const [whatsapp, setWhatsapp] = useState('');
-  const [packageType, setPackageType] = useState('Paket ATS Professional (Rp 99k)');
+  const [packageType, setPackageType] = useState(selectedPackage);
   const [submitting, setSubmitting] = useState(false);
+
+  useEffect(() => {
+    if (selectedPackage) {
+      setPackageType(selectedPackage);
+    }
+  }, [selectedPackage, isOpen]);
 
   if (!isOpen) return null;
 
   const handleSubmit = async (e) => {
     e.preventDefault();
+    const cleanName = name.trim();
+    const cleanWa = whatsapp.trim();
+
+    if (!cleanName) {
+      toast.error('Nama lengkap wajib diisi.');
+      return;
+    }
+    if (!cleanWa) {
+      toast.error('Nomor WhatsApp aktif wajib diisi.');
+      return;
+    }
+
     setSubmitting(true);
     try {
-      const result = await onSubmitOrder({ name, whatsapp, packageType });
-      if (result && result.valid) {
-        setName('');
-        setWhatsapp('');
-        onClose();
+      // 1. WhatsApp Redirection with pre-filled dynamic template
+      const waMessage = `Halo Admin Lokerresmi.id, saya ${cleanName} ingin memesan ${packageType}. Mohon info selanjutnya.`;
+      const waUrl = `https://wa.me/6285179905019?text=${encodeURIComponent(waMessage)}`;
+      window.open(waUrl, '_blank', 'noopener,noreferrer');
+
+      // 2. Simpan pesanan ke Supabase / State untuk tracking
+      if (onSubmitOrder) {
+        await onSubmitOrder({ name: cleanName, whatsapp: cleanWa, packageType });
       }
-    } catch (err) {
-      console.error(err);
+
+      setName('');
+      setWhatsapp('');
+      onClose();
+    } catch {
+      // ignore
     } finally {
       setSubmitting(false);
     }
@@ -601,22 +712,57 @@ const OrderCVModal = ({ isOpen, onClose, onSubmitOrder }) => {
 
   return (
     <div className="fixed inset-0 z-50 bg-black/60 backdrop-blur-sm flex items-center justify-center p-3 sm:p-4">
-      <div className="bg-white rounded-2xl max-w-md w-full p-4 sm:p-6 shadow-2xl relative max-h-[92vh] overflow-y-auto">
+      <div className="bg-white dark:bg-slate-900 rounded-2xl max-w-md w-full p-4 sm:p-6 shadow-2xl relative max-h-[92vh] overflow-y-auto border border-slate-100 dark:border-slate-800">
         <button
           onClick={onClose}
-          className="absolute top-3.5 right-3.5 sm:top-5 sm:right-5 h-9 w-9 sm:h-8 sm:w-8 rounded-full bg-slate-100 hover:bg-slate-200 active:bg-slate-300 flex items-center justify-center text-slate-500 hover:text-slate-800 transition font-bold text-base z-20 cursor-pointer shadow-xs"
+          className="absolute top-3.5 right-3.5 sm:top-5 sm:right-5 h-9 w-9 sm:h-8 sm:w-8 rounded-full bg-slate-100 dark:bg-slate-800 hover:bg-slate-200 dark:hover:bg-slate-700 active:bg-slate-300 flex items-center justify-center text-slate-500 dark:text-slate-400 hover:text-slate-800 dark:hover:text-slate-200 transition font-bold text-base z-20 cursor-pointer shadow-xs"
           title="Tutup"
         >
           ✕
         </button>
-        <h2 className="text-lg sm:text-xl font-bold text-navy mb-4 pr-8">Pesan Layanan CV ATS Profesional</h2>
+        <h2 className="text-lg sm:text-xl font-bold text-navy dark:text-white mb-4 pr-8">Pesan Layanan CV ATS Profesional</h2>
         <form onSubmit={handleSubmit} className="space-y-3.5 text-xs sm:text-sm">
-          <div><label className="block font-semibold text-slate-700 mb-1">Nama Lengkap</label><input type="text" required value={name} onChange={e => setName(e.target.value)} className="w-full border border-slate-300 p-2.5 sm:p-3 rounded-xl focus:ring-2 focus:ring-teal outline-none" placeholder="Masukkan nama..." /></div>
-          <div><label className="block font-semibold text-slate-700 mb-1">Nomor WhatsApp Aktif</label><input type="text" required value={whatsapp} onChange={e => setWhatsapp(e.target.value)} className="w-full border border-slate-300 p-2.5 sm:p-3 rounded-xl focus:ring-2 focus:ring-teal outline-none" placeholder="Contoh: 08123456789" /></div>
-          <div><label className="block font-semibold text-slate-700 mb-1">Pilih Paket Layanan</label><select value={packageType} onChange={e => setPackageType(e.target.value)} className="w-full border border-slate-300 p-2.5 sm:p-3 rounded-xl focus:ring-2 focus:ring-teal outline-none"><option>Paket ATS Professional (Rp 99k)</option><option>Paket Bundle CV + LinkedIn (Rp 149k)</option></select></div>
-          <button type="submit" disabled={submitting} className="w-full bg-teal hover:bg-teal/90 active:bg-teal/95 disabled:opacity-60 text-navy font-bold py-3.5 rounded-xl shadow-xs transition cursor-pointer min-h-[46px] active:scale-98 mt-2 flex items-center justify-center gap-2">
+          <div>
+            <label className="block font-semibold text-slate-700 dark:text-slate-300 mb-1">Nama Lengkap</label>
+            <input
+              type="text"
+              required
+              value={name}
+              onChange={e => setName(e.target.value)}
+              className="w-full border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-800 text-slate-900 dark:text-white p-2.5 sm:p-3 rounded-xl focus:ring-2 focus:ring-teal outline-none"
+              placeholder="Masukkan nama..."
+            />
+          </div>
+          <div>
+            <label className="block font-semibold text-slate-700 dark:text-slate-300 mb-1">Nomor WhatsApp Aktif</label>
+            <input
+              type="text"
+              required
+              value={whatsapp}
+              onChange={e => setWhatsapp(e.target.value)}
+              className="w-full border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-800 text-slate-900 dark:text-white p-2.5 sm:p-3 rounded-xl focus:ring-2 focus:ring-teal outline-none"
+              placeholder="Contoh: 08123456789"
+            />
+          </div>
+          <div>
+            <label className="block font-semibold text-slate-700 dark:text-slate-300 mb-1">Pilih Paket Layanan</label>
+            <select
+              value={packageType}
+              onChange={e => setPackageType(e.target.value)}
+              className="w-full border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-800 text-slate-900 dark:text-white p-2.5 sm:p-3 rounded-xl focus:ring-2 focus:ring-teal outline-none cursor-pointer"
+            >
+              <option value="Paket Express (Rp 49.000)">Paket Express (Rp 49.000)</option>
+              <option value="Paket Profesional (Rp 99.000)">Paket Profesional (Rp 99.000)</option>
+              <option value="Paket VIP Mentoring (Rp 249.000)">Paket VIP Mentoring (Rp 249.000)</option>
+            </select>
+          </div>
+          <button
+            type="submit"
+            disabled={submitting}
+            className="w-full bg-teal hover:bg-teal/90 active:bg-teal/95 disabled:opacity-60 text-navy font-bold py-3.5 rounded-xl shadow-xs transition cursor-pointer min-h-[46px] active:scale-98 mt-2 flex items-center justify-center gap-2"
+          >
             {submitting && <span className="inline-block h-4 w-4 animate-spin rounded-full border-2 border-navy border-t-transparent" />}
-            <span>{submitting ? 'Menyimpan ke Cloud...' : 'Kirim Pesanan Sekarang'}</span>
+            <span>{submitting ? 'Memproses Pesanan...' : 'Kirim Pesanan Sekarang'}</span>
           </button>
         </form>
       </div>
@@ -664,9 +810,9 @@ const PostJobModal = ({ isOpen, onClose, onAddJob, isAdminMode = false }) => {
 
     if (!isAdminMode) {
       const adminWa = '085179905019';
-      const waMessage = encodeURIComponent('Halo Admin, saya ingin memasang lowongan kerja di website Pintukarier.id');
-      window.open(`https://wa.me/62${adminWa.replace(/^0/, '')}?text=${waMessage}`, '_blank');
-      alert('Lowongan berhasil diajukan! Anda akan diarahkan ke WhatsApp Admin untuk konfirmasi persetujuan.');
+      const waMessage = encodeURIComponent('Halo Admin, saya ingin memasang lowongan kerja di website Lokerresmi.id');
+      window.open(`https://wa.me/62${adminWa.replace(/^0/, '')}?text=${waMessage}`, '_blank', 'noopener,noreferrer');
+      toast.success('Lowongan berhasil diajukan! Mengarahkan ke WhatsApp Admin...', { duration: 4000 });
     } else {
       toast.success(`Lowongan "${title}" berhasil ditambahkan.`);
     }
@@ -817,46 +963,6 @@ const EditJobModal = ({ job, onClose, onSave }) => {
   );
 };
 
-const AdminLoginModal = ({ isOpen, onClose, onLoginSuccess, login }) => {
-  const [username, setUsername] = useState('');
-  const [pwd, setPwd] = useState('');
-  if (!isOpen) return null;
-
-  const handleLogin = async (e) => {
-    e.preventDefault();
-    try {
-      if (!login) throw new Error('Login function not available');
-      await login({ email: username, password: pwd });
-      onLoginSuccess();
-      onClose();
-      setUsername('');
-      setPwd('');
-    } catch (err) {
-      alert('Username atau Password salah!');
-    }
-  };
-
-  return (
-    <div className="fixed inset-0 z-50 bg-black/60 backdrop-blur-sm flex items-center justify-center p-3 sm:p-4">
-      <div className="bg-white rounded-2xl max-w-sm w-full p-4 sm:p-6 shadow-2xl relative">
-        <button
-          onClick={onClose}
-          className="absolute top-3.5 right-3.5 sm:top-5 sm:right-5 h-9 w-9 sm:h-8 sm:w-8 rounded-full bg-slate-100 hover:bg-slate-200 active:bg-slate-300 flex items-center justify-center text-slate-500 hover:text-slate-800 transition font-bold text-base z-20 cursor-pointer shadow-xs"
-          title="Tutup"
-        >
-          ✕
-        </button>
-        <h2 className="text-lg sm:text-xl font-bold text-navy mb-4 pr-8">Login Superadmin</h2>
-        <form onSubmit={handleLogin} className="space-y-4 text-xs sm:text-sm">
-          <div><label className="block font-semibold text-slate-700 mb-1">Username</label><input type="text" required value={username} onChange={e => setUsername(e.target.value)} className="w-full border border-slate-300 p-2.5 sm:p-3 rounded-xl outline-none focus:ring-2 focus:ring-teal" placeholder="admin" /></div>
-          <div><label className="block font-semibold text-slate-700 mb-1">Password</label><input type="password" required value={pwd} onChange={e => setPwd(e.target.value)} className="w-full border border-slate-300 p-2.5 sm:p-3 rounded-xl outline-none focus:ring-2 focus:ring-teal" placeholder="••••••••" /></div>
-          <button type="submit" className="w-full bg-navy hover:bg-slate-800 active:bg-slate-900 text-white font-bold py-3 rounded-xl transition cursor-pointer min-h-[46px] active:scale-98">Masuk Panel</button>
-        </form>
-      </div>
-    </div>
-  );
-};
-
 const SuperAdminDashboard = ({
   jobs,
   setJobs,
@@ -865,8 +971,6 @@ const SuperAdminDashboard = ({
   fetchCVOrders,
   updateCVStatus,
   deleteCVOrder,
-  totalViews: propTotalViews,
-  loadingStats,
   isStatsLive,
   fetchStats,
   onLogout,
@@ -959,8 +1063,7 @@ const SuperAdminDashboard = ({
       } else {
         setTotalCVOrders(0);
       }
-    } catch (err) {
-      console.error('[Supabase Dashboard Metrics] Gagal mengambil data:', err);
+    } catch {
       setActiveJobs(0);
       setPendingJobs(0);
       setPremiumJobs(0);
@@ -974,7 +1077,10 @@ const SuperAdminDashboard = ({
 
   useEffect(() => {
     fetchDashboardMetrics();
-  }, [fetchDashboardMetrics]);
+    if (fetchCVOrders) {
+      fetchCVOrders();
+    }
+  }, [fetchDashboardMetrics, fetchCVOrders]);
 
   const handleConfirmDelete = async () => {
     if (!confirmDelete) return;
@@ -997,7 +1103,7 @@ const SuperAdminDashboard = ({
       <div className="bg-navy text-white px-4 sm:px-6 py-3 sm:py-4 flex justify-between items-center shadow flex-wrap gap-2">
         <div className="flex items-center space-x-2.5 sm:space-x-3">
           <span className="bg-teal text-navy font-extrabold px-2.5 py-1 rounded text-xs uppercase tracking-wider">Superadmin</span>
-          <h1 className="text-sm sm:text-base lg:text-lg font-bold">Pintukarier.id Control Center</h1>
+          <h1 className="text-sm sm:text-base lg:text-lg font-bold">Lokerresmi.id Control Center</h1>
         </div>
         <div className="flex items-center space-x-4">
           <button onClick={onLogout} className="bg-rose-500 hover:bg-rose-600 active:bg-rose-700 text-white px-3.5 sm:px-4 py-2 rounded-xl text-xs font-bold transition cursor-pointer">Keluar Admin</button>
@@ -1242,7 +1348,7 @@ const SuperAdminDashboard = ({
                       {cvOrders.map(order => (
                         <tr key={order.id} className="hover:bg-slate-50 transition-colors">
                           <td className="p-3 font-bold text-navy">{order.name}<div className="text-xs text-slate-400 font-normal">{order.date || (order.created_at ? order.created_at.split('T')[0] : 'Baru')}</div></td>
-                          <td className="p-3"><a href={`https://wa.me/${order.whatsapp}`} target="_blank" rel="noreferrer" className="text-teal font-medium hover:underline">{order.whatsapp}</a></td>
+                          <td className="p-3"><a href={`https://wa.me/${order.whatsapp}`} target="_blank" rel="noopener noreferrer" className="text-teal font-medium hover:underline">{order.whatsapp}</a></td>
                           <td className="p-3 whitespace-normal max-w-xs">{order.package}</td>
                           <td className="p-3">
                             <select
@@ -1334,9 +1440,8 @@ const SuperAdminDashboard = ({
 
 export default function JobBoard() {
   const { jobs, activeJobs, loading, setJobs } = useJobs();
-  const { createJob, updateJobStatus, toggleFeatured, deleteJob, updateJob } = useJobActions({ jobs, setJobs });
-  const { submitJobApplication } = useJobForm();
-  const { isLoggedIn, login, logout } = useAuth();
+  const { createJob, updateJobStatus, toggleFeatured, deleteJob, updateJob } = useJobActions({ setJobs });
+  const { isLoggedIn, loading: authLoading, login, logout } = useAuth();
   const { isDark, toggleDarkMode } = useDarkMode();
   const {
     cvOrders,
@@ -1347,8 +1452,6 @@ export default function JobBoard() {
     deleteCVOrder,
   } = useCVOrders();
   const {
-    totalViews,
-    loading: loadingStats,
     isLive: isStatsLive,
     fetchStats,
     recordPageView,
@@ -1358,35 +1461,22 @@ export default function JobBoard() {
   const [selectedJob, setSelectedJob] = useState(null);
   const [isPostJobOpen, setIsPostJobOpen] = useState(false);
   const [isOrderCVOpen, setIsOrderCVOpen] = useState(false);
+  const [isAICheckerOpen, setIsAICheckerOpen] = useState(false);
+  const [isCoverLetterOpen, setIsCoverLetterOpen] = useState(false);
+  const [selectedPackage, setSelectedPackage] = useState('Paket Profesional (Rp 99.000)');
   const [isAdminLoginOpen, setIsAdminLoginOpen] = useState(false);
 
-  // Auto-Increment Total Kunjungan Web terhubung ke tabel Supabase 'site_stats'
-  useEffect(() => {
-    const incrementViews = async () => {
-      try {
-        const { data, error } = await supabase
-          .from('site_stats')
-          .select('total_views')
-          .eq('id', 1)
-          .single();
+  const handleOpenOrderCV = (packageName) => {
+    if (packageName) {
+      setSelectedPackage(packageName);
+    }
+    setIsOrderCVOpen(true);
+  };
 
-        if (data && !error) {
-          await supabase
-            .from('site_stats')
-            .update({ total_views: (data.total_views || 0) + 1 })
-            .eq('id', 1);
-        } else if (!data && !error) {
-          await supabase
-            .from('site_stats')
-            .insert([{ id: 1, total_views: 1 }]);
-        }
-        if (fetchStats) fetchStats();
-      } catch (err) {
-        console.warn('[Supabase] Gagal auto-increment views:', err);
-      }
-    };
-    incrementViews();
-  }, [fetchStats]);
+  // Auto-Increment Total Kunjungan Web terhubung ke tabel Supabase 'site_stats' (validasi session storage)
+  useEffect(() => {
+    recordPageView();
+  }, [recordPageView]);
 
   // Filter lowongan khusus halaman publik: hanya yang berstatus 'Aktif'
   const publicJobs = useMemo(() => {
@@ -1406,8 +1496,8 @@ export default function JobBoard() {
     setJobs(jobs.map(j => j.id === jobId ? { ...j, applicantsCount: newCount } : j));
     try {
       await updateJob({ ...targetJob, applicantsCount: newCount });
-    } catch (error) {
-      console.error('Gagal update pelamar:', error.message);
+    } catch {
+      // ignore
     }
   };
 
@@ -1419,6 +1509,18 @@ export default function JobBoard() {
     await updateJob(updated);
   };
 
+  // Menunggu validasi sesi Supabase selesai sebelum mengevaluasi proteksi SuperAdminDashboard
+  if (authLoading) {
+    return (
+      <div className="min-h-screen bg-slate-50 dark:bg-slate-900 flex items-center justify-center">
+        <div className="flex flex-col items-center gap-3">
+          <div className="h-8 w-8 animate-spin rounded-full border-3 border-teal border-t-transparent" />
+          <span className="text-xs text-slate-500 font-medium">Memverifikasi sesi keamanan...</span>
+        </div>
+      </div>
+    );
+  }
+
   if (isLoggedIn) {
     return (
       <SuperAdminDashboard
@@ -1429,15 +1531,13 @@ export default function JobBoard() {
         fetchCVOrders={fetchCVOrders}
         updateCVStatus={updateCVStatus}
         deleteCVOrder={deleteCVOrder}
-        totalViews={totalViews}
-        loadingStats={loadingStats}
         isStatsLive={isStatsLive}
         fetchStats={fetchStats}
         onLogout={async () => {
           try {
             await logout();
-          } catch (error) {
-            console.error('Gagal logout:', error.message);
+          } catch {
+            // ignore
           }
         }}
         updateJobStatus={updateJobStatus}
@@ -1467,7 +1567,6 @@ export default function JobBoard() {
           totalJobs={publicJobs.length}
           totalCompanies={new Set(publicJobs.map(job => (job.company || '').trim()).filter(Boolean)).size}
           totalApplicants={publicJobs.reduce((sum, job) => sum + (job.applicantsCount || 0), 0)}
-          premiumJobsCount={publicJobs.filter(j => (j.featured || j.is_featured)).length}
         />
         <JobFeed
           jobs={publicJobs}
@@ -1480,14 +1579,39 @@ export default function JobBoard() {
             setSelectedTag('');
           }}
         />
-        <CVServicePromo onOrderCV={() => setIsOrderCVOpen(true)} />
+        <CVServicePromo
+          onSelectPackage={handleOpenOrderCV}
+          onOpenAIChecker={() => setIsAICheckerOpen(true)}
+          onOpenCoverLetter={() => setIsCoverLetterOpen(true)}
+        />
         <CommunitySection />
       </div>
       <Footer />
 
       <JobDetailModal job={selectedJob} onClose={() => setSelectedJob(null)} onApplyTrack={handleApplyTrack} />
       <PostJobModal isOpen={isPostJobOpen} onClose={() => setIsPostJobOpen(false)} onAddJob={handleAddJob} />
-      <OrderCVModal isOpen={isOrderCVOpen} onClose={() => setIsOrderCVOpen(false)} onSubmitOrder={createCVOrder} />
+      <OrderCVModal
+        isOpen={isOrderCVOpen}
+        onClose={() => setIsOrderCVOpen(false)}
+        onSubmitOrder={createCVOrder}
+        selectedPackage={selectedPackage}
+      />
+      <AICVCheckerModal
+        isOpen={isAICheckerOpen}
+        onClose={() => setIsAICheckerOpen(false)}
+        onOpenOrderModal={(pkg) => {
+          setIsAICheckerOpen(false);
+          handleOpenOrderCV(pkg);
+        }}
+      />
+      <AICoverLetterModal
+        isOpen={isCoverLetterOpen}
+        onClose={() => setIsCoverLetterOpen(false)}
+        onOpenOrderModal={(pkg) => {
+          setIsCoverLetterOpen(false);
+          handleOpenOrderCV(pkg);
+        }}
+      />
       <AdminLoginModal isOpen={isAdminLoginOpen} onClose={() => setIsAdminLoginOpen(false)} onLoginSuccess={() => setIsAdminLoginOpen(false)} login={login} />
     </div>
   );

@@ -5,11 +5,9 @@ import { supabase } from '../lib/supabase';
 export default function useCVOrders() {
   const [cvOrders, setCvOrders] = useState([]);
   const [loading, setLoading] = useState(true);
-  const [error, setError] = useState(null);
 
   const fetchCVOrders = useCallback(async () => {
     setLoading(true);
-    setError(null);
     try {
       const { data, error: fetchErr } = await supabase
         .from('cv_orders')
@@ -17,17 +15,13 @@ export default function useCVOrders() {
         .order('id', { ascending: false });
 
       if (fetchErr) {
-        console.warn('[Supabase] Gagal mengambil data cv_orders:', fetchErr.message);
-        setError(fetchErr);
         setCvOrders([]);
       } else if (data && Array.isArray(data)) {
         setCvOrders(data);
       } else {
         setCvOrders([]);
       }
-    } catch (err) {
-      console.warn('[Supabase] Exception saat memuat cv_orders:', err.message);
-      setError(err);
+    } catch {
       setCvOrders([]);
     } finally {
       setLoading(false);
@@ -68,7 +62,7 @@ export default function useCVOrders() {
     const payload = {
       name: orderPayload.name.trim(),
       whatsapp: orderPayload.whatsapp.trim(),
-      package: orderPayload.packageType || orderPayload.package || 'Paket ATS Professional (Rp 99k)',
+      package: orderPayload.packageType || orderPayload.package || 'Paket Profesional (Rp 99.000)',
       status: 'Menunggu Review',
       date: orderPayload.date || new Date().toISOString().split('T')[0],
     };
@@ -81,8 +75,6 @@ export default function useCVOrders() {
         .single();
 
       if (insertErr) {
-        console.warn('[Supabase] Insert cv_orders error:', insertErr.message);
-        // Optimistic entry jika RLS terbatas
         const localEntry = { ...payload, id: Date.now() };
         setCvOrders((prev) => [localEntry, ...prev]);
 
@@ -95,12 +87,10 @@ export default function useCVOrders() {
       }
 
       const inserted = data || { ...payload, id: Date.now() };
-      // Update state reaktif instan
       setCvOrders((prev) => [inserted, ...prev]);
       toast.success(validation.message);
       return { valid: true, order: inserted, message: validation.message };
-    } catch (err) {
-      console.error('[Supabase] Create cv order exception:', err);
+    } catch {
       const localEntry = { ...payload, id: Date.now() };
       setCvOrders((prev) => [localEntry, ...prev]);
       toast.success(validation.message);
@@ -109,7 +99,6 @@ export default function useCVOrders() {
   };
 
   const updateCVStatus = async (id, newStatus) => {
-    // Reaktif instan di UI
     setCvOrders((prev) =>
       prev.map((order) => (order.id === id ? { ...order, status: newStatus } : order))
     );
@@ -121,7 +110,6 @@ export default function useCVOrders() {
         .eq('id', id);
 
       if (updateErr) {
-        console.error('[Supabase] Gagal update status cv_order:', updateErr.message);
         if (updateErr.code === '42501' || updateErr.message?.toLowerCase().includes('permission denied')) {
           toast.error('Perubahan status berhasil di UI, namun RLS Supabase menolak UPDATE.', { duration: 4000 });
         } else {
@@ -132,8 +120,7 @@ export default function useCVOrders() {
 
       toast.success(`Status pesanan berhasil diubah menjadi "${newStatus}".`);
       return true;
-    } catch (err) {
-      console.error('[Supabase] Exception saat update status pesanan:', err);
+    } catch {
       toast.error('Terjadi kesalahan saat memperbarui status pesanan.');
       return false;
     }
@@ -147,15 +134,14 @@ export default function useCVOrders() {
         .eq('id', id);
 
       if (error) {
-        alert('Gagal menghapus data: ' + error.message);
+        toast.error('Gagal menghapus data: ' + error.message);
         throw error;
       }
 
       setCvOrders((prev) => prev.filter((order) => order.id !== id));
       toast.success('Pesanan CV berhasil dihapus permanen dari Supabase.');
       return true;
-    } catch (err) {
-      console.error('[Supabase] Gagal delete cv_order:', err.message);
+    } catch {
       return false;
     }
   };
@@ -163,12 +149,9 @@ export default function useCVOrders() {
   return {
     cvOrders,
     loading,
-    error,
     fetchCVOrders,
-    validateCVOrder,
     createCVOrder,
     updateCVStatus,
     deleteCVOrder,
-    setCvOrders,
   };
 }

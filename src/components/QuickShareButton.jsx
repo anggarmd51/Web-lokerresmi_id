@@ -1,37 +1,46 @@
-import React, { useState } from 'react';
+import React, { useState, useRef, useEffect } from 'react';
 import { Share2, MessageCircle, Copy, Check, Linkedin, Send } from 'lucide-react';
 import { toast } from 'react-hot-toast';
 
 export default function QuickShareButton({ job, className = '' }) {
   const [copied, setCopied] = useState(false);
+  const copyTimeoutRef = useRef(null);
+
+  useEffect(() => {
+    return () => {
+      if (copyTimeoutRef.current) {
+        clearTimeout(copyTimeoutRef.current);
+      }
+    };
+  }, []);
 
   if (!job) return null;
 
   const currentUrl = typeof window !== 'undefined'
     ? `${window.location.origin}${window.location.pathname}#job-${job.id}`
-    : `https://pintukarier.vercel.app#job-${job.id}`;
+    : `https://lokerresmi.id#job-${job.id}`;
 
   const shareTitle = `Lowongan ${job.title} - ${job.company}`;
-  const shareText = `📌 Info Lowongan Kerja di Pintukarier.id:\n\nPosisi: *${job.title}*\nPerusahaan: *${job.company}*\nLokasi: ${job.location}\nKisaran Gaji: ${job.salary}\n\nLamar segera melalui tautan resmi:\n${currentUrl}`;
+  const shareText = `📌 Info Lowongan Kerja di Lokerresmi.id:\n\nPosisi: *${job.title}*\nPerusahaan: *${job.company}*\nLokasi: ${job.location}\nKisaran Gaji: ${job.salary}\n\nLamar segera melalui tautan resmi:\n${currentUrl}`;
 
   // 1. WhatsApp Share
   const handleShareWhatsApp = () => {
     const waUrl = `https://api.whatsapp.com/send?text=${encodeURIComponent(shareText)}`;
-    window.open(waUrl, '_blank');
+    window.open(waUrl, '_blank', 'noopener,noreferrer');
     toast.success('Membuka WhatsApp untuk membagikan info loker...');
   };
 
   // 2. Telegram Share
   const handleShareTelegram = () => {
     const tgUrl = `https://t.me/share/url?url=${encodeURIComponent(currentUrl)}&text=${encodeURIComponent(shareText)}`;
-    window.open(tgUrl, '_blank');
+    window.open(tgUrl, '_blank', 'noopener,noreferrer');
     toast.success('Membuka Telegram...');
   };
 
   // 3. LinkedIn Share
   const handleShareLinkedIn = () => {
     const liUrl = `https://www.linkedin.com/sharing/share-offsite/?url=${encodeURIComponent(currentUrl)}`;
-    window.open(liUrl, '_blank');
+    window.open(liUrl, '_blank', 'noopener,noreferrer');
     toast.success('Membuka LinkedIn...');
   };
 
@@ -50,7 +59,8 @@ export default function QuickShareButton({ job, className = '' }) {
       }
       setCopied(true);
       toast.success('Tautan lowongan berhasil disalin ke clipboard!');
-      setTimeout(() => setCopied(false), 2500);
+      if (copyTimeoutRef.current) clearTimeout(copyTimeoutRef.current);
+      copyTimeoutRef.current = setTimeout(() => setCopied(false), 2500);
     } catch {
       toast.error('Gagal menyalin tautan');
     }
@@ -62,7 +72,7 @@ export default function QuickShareButton({ job, className = '' }) {
       try {
         await navigator.share({
           title: shareTitle,
-          text: `Cek lowongan ${job.title} di ${job.company} melalui Pintukarier.id`,
+          text: `Cek lowongan ${job.title} di ${job.company} melalui Lokerresmi.id`,
           url: currentUrl,
         });
         toast.success('Berhasil membuka menu bagikan!');

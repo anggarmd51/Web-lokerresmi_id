@@ -1,7 +1,7 @@
 import React, { useState } from 'react';
 import { toast } from 'react-hot-toast';
 
-export default function AdminLoginModal({ isOpen, onClose, onSuccess, login }) {
+export default function AdminLoginModal({ isOpen, onClose, onSuccess, onLoginSuccess, login }) {
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [loading, setLoading] = useState(false);
@@ -10,17 +10,43 @@ export default function AdminLoginModal({ isOpen, onClose, onSuccess, login }) {
 
   const handleLogin = async (e) => {
     e.preventDefault();
+    const trimmedEmail = email.trim();
+    const trimmedPassword = password.trim();
+
+    if (!trimmedEmail || !trimmedPassword) {
+      toast.error('Email dan password wajib diisi.');
+      return;
+    }
+
+    const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+    if (!emailRegex.test(trimmedEmail)) {
+      toast.error('Format email tidak valid.');
+      return;
+    }
+
     setLoading(true);
 
     try {
-      if (!login) throw new Error('Login function not available');
+      if (!login) throw new Error('Fungsi autentikasi tidak tersedia.');
 
-      await login({ email, password });
+      await login({ email: trimmedEmail, password: trimmedPassword });
 
       toast.success('Berhasil masuk sebagai Superadmin!');
       if (onSuccess) onSuccess();
+      if (onLoginSuccess) onLoginSuccess();
+      onClose();
     } catch (err) {
-      toast.error('Gagal login: ' + (err.message || 'Kredensial tidak valid'));
+      // Prevent leaking raw database/server stack traces or internal errors to client
+      const rawMsg = err?.message || '';
+      let safeMsg = 'Kredensial tidak valid atau akun tidak ditemukan.';
+      if (rawMsg.toLowerCase().includes('invalid login credentials')) {
+        safeMsg = 'Email atau password yang Anda masukkan salah.';
+      } else if (rawMsg.toLowerCase().includes('email not confirmed')) {
+        safeMsg = 'Email belum dikonfirmasi.';
+      } else if (rawMsg.toLowerCase().includes('too many requests')) {
+        safeMsg = 'Terlalu banyak percobaan masuk. Silakan tunggu beberapa saat.';
+      }
+      toast.error(`Gagal login: ${safeMsg}`);
     } finally {
       setLoading(false);
     }
