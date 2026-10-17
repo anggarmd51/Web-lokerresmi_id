@@ -28,13 +28,6 @@ export default function QuickShareButton({ job, className = '' }) {
     toast.success('Membuka WhatsApp untuk membagikan info loker...');
   };
 
-  // 2. Telegram Share
-  const handleShareTelegram = () => {
-    const tgUrl = `https://t.me/share/url?url=${encodeURIComponent(currentUrl)}&text=${encodeURIComponent(shareText)}`;
-    window.open(tgUrl, '_blank', 'noopener,noreferrer');
-    toast.success('Membuka Telegram...');
-  };
-
   // 3. LinkedIn Share
   const handleShareLinkedIn = () => {
     const liUrl = `https://www.linkedin.com/sharing/share-offsite/?url=${encodeURIComponent(currentUrl)}`;

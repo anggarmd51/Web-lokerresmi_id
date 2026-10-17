@@ -637,7 +637,7 @@ const JobDetailModal = ({ job, onClose, onApplyTrack, onOpenCoverLetter }) => {
         <QuickShareButton job={job} className="mb-5" />
 
         <button onClick={handleApply} className={`${buttonClass} text-xs sm:text-sm md:text-base min-h-[46px]`}>
-          Kirim Lamaran Sekarang ({job.applyType ? job.applyType.toUpperCase() : 'WEB'})
+          KIRIM LAMARAN
         </button>
         <button type="button" onClick={() => onOpenCoverLetter(job)} className="mt-3 w-full min-h-[46px] border border-teal rounded-xl px-4 py-3 text-xs sm:text-sm font-bold text-navy dark:text-teal hover:bg-teal/10 transition inline-flex items-center justify-center gap-2">
           <FileText className="h-4 w-4 shrink-0" />
@@ -1429,7 +1429,7 @@ const SuperAdminDashboard = ({
 
 export default function JobBoard() {
   const { jobs, activeJobs, loading, error: jobsError, setJobs } = useJobs();
-  const { route, openJob, closeJob } = useJobRoute();
+  const { route, modal, openJob, closeJob, openModal, closeModal } = useJobRoute();
   const { createJob, updateJobStatus, toggleFeatured, deleteJob, updateJob } = useJobActions({ setJobs });
   const { isLoggedIn, loading: authLoading, login, logout } = useAuth();
   const { isDark, toggleDarkMode } = useDarkMode();
@@ -1448,27 +1448,17 @@ export default function JobBoard() {
   } = useSiteStats();
   const [searchTerm, setSearchTerm] = useState('');
   const [selectedTag, setSelectedTag] = useState('');
-  const [isEmployerInquiryOpen, setIsEmployerInquiryOpen] = useState(false);
-  const [isOrderCVOpen, setIsOrderCVOpen] = useState(false);
-  const [isAICheckerOpen, setIsAICheckerOpen] = useState(false);
-  const [isCoverLetterOpen, setIsCoverLetterOpen] = useState(false);
-  const [coverLetterJob, setCoverLetterJob] = useState(null);
   const [selectedPackage, setSelectedPackage] = useState('Paket Profesional (Rp 99.000)');
-  const [isAdminLoginOpen, setIsAdminLoginOpen] = useState(false);
-
-  const closeEmployerInquiry = useCallback(() => setIsEmployerInquiryOpen(false), []);
 
   const handleOpenCoverLetter = (job = null) => {
-    setCoverLetterJob(job ? { title: job.title, company: job.company } : null);
-    if (job) closeJob();
-    setIsCoverLetterOpen(true);
+    openModal('cover-letter', job ? { title: job.title, company: job.company } : null);
   };
 
-  const handleOpenOrderCV = (packageName) => {
+  const handleOpenOrderCV = (packageName, replace = false) => {
     if (packageName) {
       setSelectedPackage(packageName);
     }
-    setIsOrderCVOpen(true);
+    openModal('cv-order', null, { replace });
   };
 
   // Auto-Increment Total Kunjungan Web terhubung ke tabel Supabase 'site_stats' (validasi session storage)
@@ -1557,8 +1547,8 @@ export default function JobBoard() {
 
       <div>
         <Navbar
-          onOpenPostJob={() => setIsEmployerInquiryOpen(true)}
-          onOpenAdminLogin={() => setIsAdminLoginOpen(true)}
+          onOpenPostJob={() => openModal('employer-inquiry')}
+          onOpenAdminLogin={() => openModal('admin-login')}
           isAdmin={false}
           isDark={isDark}
           toggleDarkMode={toggleDarkMode}
@@ -1582,14 +1572,14 @@ export default function JobBoard() {
         />
         <CVServicePromo
           onSelectPackage={handleOpenOrderCV}
-          onOpenAIChecker={() => setIsAICheckerOpen(true)}
+          onOpenAIChecker={() => openModal('cv-checker')}
           onOpenCoverLetter={() => handleOpenCoverLetter()}
         />
         <CommunitySection />
       </div>
-      <Footer onOpenEmployerInquiry={() => setIsEmployerInquiryOpen(true)} />
+      <Footer onOpenEmployerInquiry={() => openModal('employer-inquiry')} />
 
-      {(route.isDetail || route.invalid) && !selectedJob && (
+      {!modal && (route.isDetail || route.invalid) && !selectedJob && (
         <div role="dialog" aria-modal="true" aria-labelledby="job-route-status" className="fixed inset-0 z-50 bg-black/60 flex items-center justify-center p-4">
           <section className="bg-white dark:bg-slate-900 rounded-2xl max-w-lg w-full p-6 shadow-2xl">
             <h2 id="job-route-status" className="text-xl font-bold text-navy dark:text-white">
@@ -1602,32 +1592,30 @@ export default function JobBoard() {
           </section>
         </div>
       )}
-      <JobDetailModal job={selectedJob} onClose={closeJob} onApplyTrack={handleApplyTrack} onOpenCoverLetter={handleOpenCoverLetter} />
-      <EmployerInquiryModal isOpen={isEmployerInquiryOpen} onClose={closeEmployerInquiry} />
+      <JobDetailModal job={modal ? null : selectedJob} onClose={closeJob} onApplyTrack={handleApplyTrack} onOpenCoverLetter={handleOpenCoverLetter} />
+      <EmployerInquiryModal isOpen={modal?.type === 'employer-inquiry'} onClose={closeModal} />
       <OrderCVModal
-        isOpen={isOrderCVOpen}
-        onClose={() => setIsOrderCVOpen(false)}
+        isOpen={modal?.type === 'cv-order'}
+        onClose={closeModal}
         onSubmitOrder={createCVOrder}
         selectedPackage={selectedPackage}
       />
       <AICVCheckerModal
-        isOpen={isAICheckerOpen}
-        onClose={() => setIsAICheckerOpen(false)}
+        isOpen={modal?.type === 'cv-checker'}
+        onClose={closeModal}
         onOpenOrderModal={(pkg) => {
-          setIsAICheckerOpen(false);
-          handleOpenOrderCV(pkg);
+          handleOpenOrderCV(pkg, true);
         }}
       />
       <AICoverLetterModal
-        isOpen={isCoverLetterOpen}
-        initialJob={coverLetterJob}
-        onClose={() => setIsCoverLetterOpen(false)}
+        isOpen={modal?.type === 'cover-letter'}
+        initialJob={modal?.type === 'cover-letter' ? modal.payload : null}
+        onClose={closeModal}
         onOpenOrderModal={(pkg) => {
-          setIsCoverLetterOpen(false);
-          handleOpenOrderCV(pkg);
+          handleOpenOrderCV(pkg, true);
         }}
       />
-      <AdminLoginModal isOpen={isAdminLoginOpen} onClose={() => setIsAdminLoginOpen(false)} onLoginSuccess={() => setIsAdminLoginOpen(false)} login={login} />
+      <AdminLoginModal isOpen={modal?.type === 'admin-login'} onClose={closeModal} login={login} />
     </div>
   );
 }

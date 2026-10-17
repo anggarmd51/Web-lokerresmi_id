@@ -149,12 +149,12 @@ test('modal hanya memanggil window.open untuk valid; valid submit menampilkan fa
 
 test('JobBoard me-wire dua entry employer, CTA job ke cover letter, generic cover-letter reset, dan pricing mobile tanpa horizontal scroll', async () => {
   const source = await readFile(new URL('../src/components/JobBoard.jsx', import.meta.url), 'utf8');
-  assert.match(source, /onOpenPostJob=\{\(\) => setIsEmployerInquiryOpen\(true\)\}/);
-  assert.match(source, /<Footer onOpenEmployerInquiry=\{\(\) => setIsEmployerInquiryOpen\(true\)\}/);
+  assert.match(source, /onOpenPostJob=\{\(\) => openModal\('employer-inquiry'\)\}/);
+  assert.match(source, /<Footer onOpenEmployerInquiry=\{\(\) => openModal\('employer-inquiry'\)\}/);
   assert.match(source, /onOpenCoverLetter=\{handleOpenCoverLetter\}/);
-  assert.match(source, /setCoverLetterJob\(job \? \{ title: job\.title, company: job\.company \} : null\)/);
+  assert.match(source, /openModal\('cover-letter', job \? \{ title: job\.title, company: job\.company \} : null\)/);
   assert.match(source, /onOpenCoverLetter=\{\(\) => handleOpenCoverLetter\(\)\}/);
-  assert.match(source, /initialJob=\{coverLetterJob\}/);
+  assert.match(source, /initialJob=\{modal\?\.type === 'cover-letter' \? modal\.payload : null\}/);
   assert.match(source, /grid grid-cols-1 md:grid-cols-3 gap-5/);
   assert.match(source, /order-1 md:order-2[^\n]*Paket Profesional|Paket Profesional[\s\S]{0,500}order-1 md:order-2/);
   assert.match(source, /order-2 md:order-1[^\n]*Paket Express|Paket Express[\s\S]{0,500}order-2 md:order-1/);

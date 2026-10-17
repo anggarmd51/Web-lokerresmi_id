@@ -1,15 +1,20 @@
-import { useCallback, useEffect, useState } from 'react';
-import { jobPath, readJobRoute } from '../lib/seo';
+import { useCallback, useEffect, useRef, useState } from 'react';
+import {
+  closeModalHistory,
+  initializeModalHistory,
+  openJobHistory,
+  openModalHistory,
+  readNavigation,
+} from '../lib/modalHistory';
 
 export default function useJobRoute() {
-  const [route, setRoute] = useState(() => readJobRoute(window.location));
+  const [navigation, setNavigation] = useState(() => readNavigation(window));
+  const closing = useRef(false);
+
   useEffect(() => {
     const syncRoute = () => {
-      const next = readJobRoute(window.location);
-      if (next.legacy && !next.invalid) {
-        window.history.replaceState(null, '', jobPath(next.id));
-      }
-      setRoute(next);
+      closing.current = false;
+      setNavigation(initializeModalHistory(window));
     };
     syncRoute();
     window.addEventListener('popstate', syncRoute);
@@ -21,19 +26,22 @@ export default function useJobRoute() {
   }, []);
 
   const openJob = useCallback((job) => {
-    window.history.pushState({ jobModal: true }, '', jobPath(job.id));
-    setRoute(readJobRoute(window.location));
+    if (!closing.current) setNavigation(openJobHistory(window, job));
   }, []);
 
-  const closeJob = useCallback(() => {
-    if (window.history.state?.jobModal) {
-      window.history.back();
-    } else {
-      // Direct entry has no guaranteed same-site history to return to.
-      window.history.replaceState(null, '', '/');
-      setRoute(readJobRoute(window.location));
+  const openModal = useCallback((type, payload = null, options = {}) => {
+    if (!closing.current) setNavigation(openModalHistory(window, type, payload, options));
+  }, []);
+
+  const closeModal = useCallback(() => {
+    if (closing.current) return;
+    closing.current = true;
+    const next = closeModalHistory(window);
+    if (next) {
+      closing.current = false;
+      setNavigation(next);
     }
   }, []);
 
-  return { route, openJob, closeJob };
+  return { ...navigation, openJob, closeJob: closeModal, openModal, closeModal };
 }
