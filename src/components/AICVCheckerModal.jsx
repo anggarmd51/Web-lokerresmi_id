@@ -765,7 +765,7 @@ export default function AICVCheckerModal({ isOpen, onClose, onOpenOrderModal }) 
                   onClick={handleUpsellClick}
                   className="bg-teal hover:bg-teal/90 active:bg-teal text-navy font-black px-5 py-3 rounded-xl transition cursor-pointer text-xs sm:text-sm active:scale-98 shrink-0 shadow-md flex items-center gap-2 w-full sm:w-auto justify-center"
                 >
-                  <span>Optimalkan CV Saya Sekarang (Mulai Rp 49k)</span>
+                  <span>Optimalkan CV Saya dengan Paket Profesional (Rp 99.000)</span>
                   <ArrowRight className="h-4 w-4" />
                 </button>
               </div>

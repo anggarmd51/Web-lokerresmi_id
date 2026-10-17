@@ -1,4 +1,4 @@
-import React, { useState, useRef } from 'react';
+import React, { useEffect, useState, useRef } from 'react';
 import html2pdf from 'html2pdf.js';
 import {
   Sparkles,
@@ -361,7 +361,7 @@ ATURAN DAN LARANGAN KETAT:
   };
 };
 
-export default function AICoverLetterModal({ isOpen, onClose, onOpenOrderModal }) {
+export default function AICoverLetterModal({ isOpen, onClose, onOpenOrderModal, initialJob = null }) {
   const [jobTitle, setJobTitle] = useState('');
   const [companyName, setCompanyName] = useState('');
   const [jobDesc, setJobDesc] = useState('');
@@ -374,6 +374,16 @@ export default function AICoverLetterModal({ isOpen, onClose, onOpenOrderModal }
   const [isFallback, setIsFallback] = useState(false);
 
   const fileInputRef = useRef(null);
+
+  useEffect(() => {
+    if (!isOpen) return;
+
+    setJobTitle(initialJob?.title || '');
+    setCompanyName(initialJob?.company || '');
+    setJobDesc('');
+    setGeneratedLetter('');
+    setIsFallback(false);
+  }, [isOpen, initialJob?.title, initialJob?.company]);
 
   if (!isOpen) return null;
 
@@ -903,7 +913,7 @@ export default function AICoverLetterModal({ isOpen, onClose, onOpenOrderModal }
                   onClick={handleUpsellClick}
                   className="bg-teal hover:bg-teal/90 active:bg-teal text-navy font-black px-5 py-3 rounded-xl transition cursor-pointer text-xs sm:text-sm active:scale-98 shrink-0 shadow-md flex items-center gap-2 w-full sm:w-auto justify-center"
                 >
-                  <span>Pesan Pembuatan CV Profesional (Mulai Rp 49k)</span>
+                  <span>Pesan Paket Profesional (Rp 99.000)</span>
                   <ArrowRight className="h-4 w-4" />
                 </button>
               </div>

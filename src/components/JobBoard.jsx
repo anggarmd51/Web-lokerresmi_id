@@ -18,6 +18,7 @@ import JobPostingSchema from './JobPostingSchema';
 import QuickShareButton from './QuickShareButton';
 import AICVCheckerModal from './AICVCheckerModal';
 import AICoverLetterModal from './AICoverLetterModal';
+import EmployerInquiryModal from './EmployerInquiryModal';
 
 const publicCategories = ['IT & Software', 'Sales & Marketing', 'Keuangan/Akuntansi', 'HRD/Personalia', 'Administrasi', 'Teknik/Engineering', 'Logistik/Operasional', 'Pelayanan Pelanggan'];
 
@@ -390,10 +391,10 @@ const CVServicePromo = ({ onSelectPackage, onOpenAIChecker, onOpenCoverLetter })
           </div>
         </div>
 
-        {/* Horizontal scrollable pricing cards slider */}
-        <div className="flex overflow-x-auto snap-x gap-4 pb-4 pt-2 -mx-4 px-4 sm:mx-0 sm:px-0">
+        {/* Profesional tampil pertama di mobile; desktop tetap Express, Profesional, VIP. */}
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-5 pb-4 pt-2">
           {/* Tier 1: Paket Express */}
-          <div className="snap-start shrink-0 w-[285px] sm:w-[320px] md:flex-1 bg-white/10 backdrop-blur-md p-5 sm:p-6 rounded-2xl border border-white/15 flex flex-col justify-between transition hover:border-white/30">
+          <div className="order-2 md:order-1 min-w-0 bg-white/10 backdrop-blur-md p-5 sm:p-6 rounded-2xl border border-white/15 flex flex-col justify-between transition hover:border-white/30">
             <div>
               <div className="flex items-center justify-between mb-2">
                 <h3 className="font-bold text-base sm:text-lg text-white">Paket Express</h3>
@@ -415,7 +416,7 @@ const CVServicePromo = ({ onSelectPackage, onOpenAIChecker, onOpenCoverLetter })
           </div>
 
           {/* Tier 2: Paket Profesional (Populer) */}
-          <div className="snap-start shrink-0 w-[285px] sm:w-[320px] md:flex-1 bg-white/15 backdrop-blur-md p-5 sm:p-6 rounded-2xl border-2 border-teal relative flex flex-col justify-between shadow-xl transition hover:border-teal/80">
+          <div className="order-1 md:order-2 min-w-0 bg-white/15 backdrop-blur-md p-5 sm:p-6 rounded-2xl border-2 border-teal relative flex flex-col justify-between shadow-xl transition hover:border-teal/80">
             <div className="absolute -top-3 right-5 bg-teal text-navy text-[10px] sm:text-xs font-black px-3 py-0.5 rounded-full uppercase tracking-wider shadow-sm">
               Populer
             </div>
@@ -440,7 +441,7 @@ const CVServicePromo = ({ onSelectPackage, onOpenAIChecker, onOpenCoverLetter })
           </div>
 
           {/* Tier 3: Paket VIP Mentoring */}
-          <div className="snap-start shrink-0 w-[285px] sm:w-[320px] md:flex-1 bg-white/10 backdrop-blur-md p-5 sm:p-6 rounded-2xl border border-white/15 flex flex-col justify-between transition hover:border-white/30">
+          <div className="order-3 min-w-0 bg-white/10 backdrop-blur-md p-5 sm:p-6 rounded-2xl border border-white/15 flex flex-col justify-between transition hover:border-white/30">
             <div>
               <div className="flex items-center justify-between mb-2">
                 <h3 className="font-bold text-base sm:text-lg text-white">Paket VIP Mentoring</h3>
@@ -476,13 +477,17 @@ const CommunitySection = () => (
   </div>
 );
 
-const Footer = () => (
+const Footer = ({ onOpenEmployerInquiry }) => (
   <footer className="bg-navy text-white pt-12 pb-6 border-t border-slate-800">
     <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 text-center">
       <div className="inline-block bg-white/5 px-4 py-2 rounded-xl mb-2">
         <span className="text-lg font-bold tracking-[0.2em] uppercase text-white">LOKERRESMI.ID</span>
       </div>
       <p className="text-slate-400 text-sm mb-5 max-w-lg mx-auto">Peluang Karier Resmi & Terverifikasi • Platform Informasi Lowongan Kerja & B2B Talent Terpercaya.</p>
+
+      <button type="button" onClick={onOpenEmployerInquiry} className="mb-5 min-h-[44px] rounded-xl border border-teal/40 px-5 py-3 text-sm font-bold text-teal hover:bg-white/10 transition">
+        Untuk Perusahaan
+      </button>
 
       <div className="mb-5 flex flex-wrap items-center justify-center gap-3">
         <a href="https://www.instagram.com/lokerresmi_id?stkn=MWtwcTJjbnUydHVsag==" target="_blank" rel="noopener noreferrer" aria-label="Instagram Lokerresmi.id" className="group inline-flex items-center gap-2 rounded-full border border-white/15 bg-white/5 px-3 py-2 text-sm text-slate-200 transition-all duration-300 hover:-translate-y-0.5 hover:border-pink-400/60 hover:bg-gradient-to-r hover:from-pink-500/20 hover:to-orange-400/20 hover:text-white">
@@ -529,7 +534,7 @@ const normalizeWhatsappNumber = (value = '') => {
   return normalized.startsWith('+') ? normalized.replace('+', '') : normalized;
 };
 
-const JobDetailModal = ({ job, onClose, onApplyTrack }) => {
+const JobDetailModal = ({ job, onClose, onApplyTrack, onOpenCoverLetter }) => {
   if (!job) return null;
   if (job.status && job.status !== 'Aktif') return null;
 
@@ -633,6 +638,10 @@ const JobDetailModal = ({ job, onClose, onApplyTrack }) => {
 
         <button onClick={handleApply} className={`${buttonClass} text-xs sm:text-sm md:text-base min-h-[46px]`}>
           Kirim Lamaran Sekarang ({job.applyType ? job.applyType.toUpperCase() : 'WEB'})
+        </button>
+        <button type="button" onClick={() => onOpenCoverLetter(job)} className="mt-3 w-full min-h-[46px] border border-teal rounded-xl px-4 py-3 text-xs sm:text-sm font-bold text-navy dark:text-teal hover:bg-teal/10 transition inline-flex items-center justify-center gap-2">
+          <FileText className="h-4 w-4 shrink-0" />
+          Buat Surat Lamaran AI untuk Posisi Ini
         </button>
       </div>
     </div>
@@ -1439,12 +1448,21 @@ export default function JobBoard() {
   } = useSiteStats();
   const [searchTerm, setSearchTerm] = useState('');
   const [selectedTag, setSelectedTag] = useState('');
-  const [isPostJobOpen, setIsPostJobOpen] = useState(false);
+  const [isEmployerInquiryOpen, setIsEmployerInquiryOpen] = useState(false);
   const [isOrderCVOpen, setIsOrderCVOpen] = useState(false);
   const [isAICheckerOpen, setIsAICheckerOpen] = useState(false);
   const [isCoverLetterOpen, setIsCoverLetterOpen] = useState(false);
+  const [coverLetterJob, setCoverLetterJob] = useState(null);
   const [selectedPackage, setSelectedPackage] = useState('Paket Profesional (Rp 99.000)');
   const [isAdminLoginOpen, setIsAdminLoginOpen] = useState(false);
+
+  const closeEmployerInquiry = useCallback(() => setIsEmployerInquiryOpen(false), []);
+
+  const handleOpenCoverLetter = (job = null) => {
+    setCoverLetterJob(job ? { title: job.title, company: job.company } : null);
+    if (job) closeJob();
+    setIsCoverLetterOpen(true);
+  };
 
   const handleOpenOrderCV = (packageName) => {
     if (packageName) {
@@ -1539,7 +1557,7 @@ export default function JobBoard() {
 
       <div>
         <Navbar
-          onOpenPostJob={() => toast.error('Pemasangan lowongan hanya melalui admin LokerResmi.id.')}
+          onOpenPostJob={() => setIsEmployerInquiryOpen(true)}
           onOpenAdminLogin={() => setIsAdminLoginOpen(true)}
           isAdmin={false}
           isDark={isDark}
@@ -1565,11 +1583,11 @@ export default function JobBoard() {
         <CVServicePromo
           onSelectPackage={handleOpenOrderCV}
           onOpenAIChecker={() => setIsAICheckerOpen(true)}
-          onOpenCoverLetter={() => setIsCoverLetterOpen(true)}
+          onOpenCoverLetter={() => handleOpenCoverLetter()}
         />
         <CommunitySection />
       </div>
-      <Footer />
+      <Footer onOpenEmployerInquiry={() => setIsEmployerInquiryOpen(true)} />
 
       {(route.isDetail || route.invalid) && !selectedJob && (
         <div role="dialog" aria-modal="true" aria-labelledby="job-route-status" className="fixed inset-0 z-50 bg-black/60 flex items-center justify-center p-4">
@@ -1584,8 +1602,8 @@ export default function JobBoard() {
           </section>
         </div>
       )}
-      <JobDetailModal job={selectedJob} onClose={closeJob} onApplyTrack={handleApplyTrack} />
-      <PostJobModal isOpen={isPostJobOpen} onClose={() => setIsPostJobOpen(false)} onAddJob={handleAddJob} />
+      <JobDetailModal job={selectedJob} onClose={closeJob} onApplyTrack={handleApplyTrack} onOpenCoverLetter={handleOpenCoverLetter} />
+      <EmployerInquiryModal isOpen={isEmployerInquiryOpen} onClose={closeEmployerInquiry} />
       <OrderCVModal
         isOpen={isOrderCVOpen}
         onClose={() => setIsOrderCVOpen(false)}
@@ -1602,6 +1620,7 @@ export default function JobBoard() {
       />
       <AICoverLetterModal
         isOpen={isCoverLetterOpen}
+        initialJob={coverLetterJob}
         onClose={() => setIsCoverLetterOpen(false)}
         onOpenOrderModal={(pkg) => {
           setIsCoverLetterOpen(false);
