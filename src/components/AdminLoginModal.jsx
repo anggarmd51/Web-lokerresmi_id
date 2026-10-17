@@ -39,7 +39,9 @@ export default function AdminLoginModal({ isOpen, onClose, onSuccess, onLoginSuc
       // Prevent leaking raw database/server stack traces or internal errors to client
       const rawMsg = err?.message || '';
       let safeMsg = 'Kredensial tidak valid atau akun tidak ditemukan.';
-      if (rawMsg.toLowerCase().includes('invalid login credentials')) {
+      if (err?.code === 'admin_access_denied') {
+        safeMsg = 'Akun ini tidak memiliki hak akses admin';
+      } else if (rawMsg.toLowerCase().includes('invalid login credentials')) {
         safeMsg = 'Email atau password yang Anda masukkan salah.';
       } else if (rawMsg.toLowerCase().includes('email not confirmed')) {
         safeMsg = 'Email belum dikonfirmasi.';

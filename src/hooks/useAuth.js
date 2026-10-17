@@ -59,7 +59,9 @@ export default function useAuth() {
       await supabase.auth.signOut({ scope: 'local' });
       setSession(null);
       setIsAdmin(false);
-      throw new Error('Akun ini tidak memiliki akses admin LokerResmi.id.');
+      const accessError = new Error('Akun ini tidak memiliki hak akses admin');
+      accessError.code = 'admin_access_denied';
+      throw accessError;
     }
     setSession(data.session);
     return true;
