@@ -10,9 +10,10 @@ try {
   console.warn('[AI Studio] Supabase client initialization warning:', error);
   // Fallback mock if initialization fails completely
   supabaseInstance = {
+    rpc: () => Promise.resolve({ data: null, error: { message: 'Supabase belum dikonfigurasi.' } }),
     from: () => ({
       select: () => ({ order: () => ({ order: () => Promise.resolve({ data: [], error: null }) }) }),
-      insert: () => ({ select: () => ({ single: () => Promise.resolve({ data: null, error: null }) }) }),
+      insert: () => Promise.resolve({ data: null, error: { message: 'Supabase belum dikonfigurasi.' } }),
       update: () => ({ eq: () => Promise.resolve({ error: null }) }),
       delete: () => ({ eq: () => Promise.resolve({ error: null }) }),
     }),

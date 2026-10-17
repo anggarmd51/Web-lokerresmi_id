@@ -2,72 +2,77 @@ import { useEffect, useState } from 'react';
 import { supabase } from '../lib/supabase';
 
 export default function useAuth() {
-  const [isLoggedIn, setIsLoggedIn] = useState(false);
+  const [session, setSession] = useState(undefined);
+  const [isAdmin, setIsAdmin] = useState(false);
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
     let mounted = true;
-
-    // Inisialisasi awal autentikasi secara eksklusif dari Supabase getSession
-    const initAuth = async () => {
-      try {
-        const { data: { session }, error } = await supabase.auth.getSession();
-        if (mounted) {
-          if (error || !session) {
-            setIsLoggedIn(false);
-          } else {
-            setIsLoggedIn(true);
-          }
-        }
-      } catch {
-        if (mounted) {
-          setIsLoggedIn(false);
-        }
-      } finally {
-        if (mounted) {
-          setLoading(false);
-        }
-      }
-    };
-
-    initAuth();
-
-    // Listener realtime untuk memantau perubahan status login, logout, atau token refresh
-    const { data: authListener } = supabase.auth.onAuthStateChange((event, session) => {
+    let receivedAuthEvent = false;
+    const { data: listener } = supabase.auth.onAuthStateChange((_event, nextSession) => {
+      receivedAuthEvent = true;
       if (mounted) {
-        setIsLoggedIn(Boolean(session));
-        setLoading(false);
+        setIsAdmin(false);
+        setLoading(Boolean(nextSession));
+        setSession(nextSession ? { ...nextSession } : null);
       }
     });
-
+    supabase.auth.getSession().then(({ data, error }) => {
+      if (mounted && !receivedAuthEvent) setSession(error ? null : data?.session || null);
+    }).catch(() => {
+      if (mounted && !receivedAuthEvent) setSession(null);
+    });
     return () => {
       mounted = false;
-      authListener?.subscription?.unsubscribe?.();
+      listener?.subscription?.unsubscribe?.();
     };
   }, []);
+
+  // RPC di luar callback onAuthStateChange; hindari deadlock Supabase Auth.
+  useEffect(() => {
+    let current = true;
+    if (session === undefined) return undefined;
+    setIsAdmin(false);
+    if (!session) {
+      setLoading(false);
+      return undefined;
+    }
+    setLoading(true);
+    (async () => {
+      try {
+        const { data, error } = await supabase.rpc('is_lokerresmi_admin');
+        if (current) setIsAdmin(!error && data === true);
+      } catch {
+        if (current) setIsAdmin(false);
+      } finally {
+        if (current) setLoading(false);
+      }
+    })();
+    return () => { current = false; };
+  }, [session]);
 
   const login = async ({ email, password }) => {
     const { data, error } = await supabase.auth.signInWithPassword({ email, password });
     if (error) throw error;
-    setIsLoggedIn(Boolean(data?.session));
+    const { data: allowed, error: adminError } = await supabase.rpc('is_lokerresmi_admin');
+    if (!data?.session || adminError || allowed !== true) {
+      await supabase.auth.signOut({ scope: 'local' });
+      setSession(null);
+      setIsAdmin(false);
+      throw new Error('Akun ini tidak memiliki akses admin LokerResmi.id.');
+    }
+    setSession(data.session);
     return true;
   };
 
   const logout = async () => {
-    try {
-      await supabase.auth.signOut({ scope: 'local' });
-    } catch {
-      // ignore
-    } finally {
-      setIsLoggedIn(false);
-    }
+    setIsAdmin(false);
+    setSession(null);
+    const { error } = await supabase.auth.signOut({ scope: 'local' });
+    if (error) throw error;
     return true;
   };
 
-  return {
-    isLoggedIn,
-    loading,
-    login,
-    logout,
-  };
+  // Alias kompatibel: panel lama memakai isLoggedIn sebagai gerbang admin.
+  return { isAdmin, isLoggedIn: isAdmin, loading, login, logout };
 }

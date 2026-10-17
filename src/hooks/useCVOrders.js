@@ -1,157 +1,101 @@
-import { useEffect, useState, useCallback } from 'react';
+import { useEffect, useState, useCallback, useRef } from 'react';
 import { toast } from 'react-hot-toast';
 import { supabase } from '../lib/supabase';
 
-export default function useCVOrders() {
+export default function useCVOrders({ isAdmin = false } = {}) {
   const [cvOrders, setCvOrders] = useState([]);
-  const [loading, setLoading] = useState(true);
+  const [loading, setLoading] = useState(false);
+  const requestVersion = useRef(0);
 
   const fetchCVOrders = useCallback(async () => {
+    const version = ++requestVersion.current;
+    if (!isAdmin) {
+      setCvOrders([]);
+      setLoading(false);
+      return;
+    }
     setLoading(true);
     try {
-      const { data, error: fetchErr } = await supabase
-        .from('cv_orders')
-        .select('*')
-        .order('id', { ascending: false });
-
-      if (fetchErr) {
-        setCvOrders([]);
-      } else if (data && Array.isArray(data)) {
-        setCvOrders(data);
-      } else {
-        setCvOrders([]);
-      }
+      const { data, error } = await supabase.from('cv_orders').select('*').order('id', { ascending: false });
+      if (version !== requestVersion.current) return;
+      setCvOrders(!error && Array.isArray(data) ? data : []);
+      if (error) toast.error('Tidak dapat membaca pesanan. Periksa izin admin.');
     } catch {
-      setCvOrders([]);
+      if (version === requestVersion.current) {
+        setCvOrders([]);
+        toast.error('Tidak dapat memuat pesanan.');
+      }
     } finally {
-      setLoading(false);
+      if (version === requestVersion.current) setLoading(false);
     }
-  }, []);
+  }, [isAdmin]);
 
   useEffect(() => {
     fetchCVOrders();
+    // Batalkan respons lama agar PII tidak muncul kembali setelah logout.
+    return () => { requestVersion.current += 1; };
   }, [fetchCVOrders]);
 
-  const validateCVOrder = (values = {}) => {
-    const { name, whatsapp, packageType, package: pkg } = values;
-    const selectedPackage = packageType || pkg;
-
-    if (!name || !name.trim()) {
-      return { valid: false, message: 'Nama lengkap wajib diisi.' };
-    }
-    if (!whatsapp || !whatsapp.trim()) {
-      return { valid: false, message: 'Nomor WhatsApp wajib diisi.' };
-    }
-    if (!selectedPackage || !selectedPackage.trim()) {
-      return { valid: false, message: 'Pilih paket layanan terlebih dahulu.' };
-    }
-
-    return {
-      valid: true,
-      message: 'Pesanan CV berhasil dikirim! Tim kami akan segera menghubungi WhatsApp Anda.',
-    };
-  };
-
   const createCVOrder = async (orderPayload = {}) => {
-    const validation = validateCVOrder(orderPayload);
-    if (!validation.valid) {
-      toast.error(validation.message);
-      return { valid: false, message: validation.message };
+    const name = String(orderPayload.name || '').trim();
+    const whatsapp = String(orderPayload.whatsapp || '').trim();
+    const selectedPackage = String(orderPayload.packageType || orderPayload.package || '').trim();
+    if (!name || !whatsapp || !selectedPackage) {
+      const message = 'Nama, nomor WhatsApp, dan paket layanan wajib diisi.';
+      toast.error(message);
+      return { valid: false, message };
     }
-
     const payload = {
-      name: orderPayload.name.trim(),
-      whatsapp: orderPayload.whatsapp.trim(),
-      package: orderPayload.packageType || orderPayload.package || 'Paket Profesional (Rp 99.000)',
+      name,
+      whatsapp,
+      package: selectedPackage,
       status: 'Menunggu Review',
-      date: orderPayload.date || new Date().toISOString().split('T')[0],
+      date: new Date().toISOString().split('T')[0],
     };
-
     try {
-      const { data, error: insertErr } = await supabase
-        .from('cv_orders')
-        .insert([payload])
-        .select()
-        .single();
-
-      if (insertErr) {
-        const localEntry = { ...payload, id: Date.now() };
-        setCvOrders((prev) => [localEntry, ...prev]);
-
-        if (insertErr.code === '42501' || insertErr.message?.toLowerCase().includes('permission denied')) {
-          toast.error('Pesanan dicatat, namun akses INSERT tabel cv_orders dibatasi oleh RLS Supabase.', { duration: 4000 });
-        } else {
-          toast.error(`Gagal menyimpan ke cloud: ${insertErr.message}`);
-        }
-        return { valid: true, order: localEntry, message: validation.message };
-      }
-
-      const inserted = data || { ...payload, id: Date.now() };
-      setCvOrders((prev) => [inserted, ...prev]);
-      toast.success(validation.message);
-      return { valid: true, order: inserted, message: validation.message };
+      // Tanpa SELECT/RETURNING: pengunjung hanya punya hak INSERT.
+      const { error } = await supabase.from('cv_orders').insert([payload]);
+      if (error) throw error;
+      if (isAdmin) await fetchCVOrders();
+      const message = 'Pesanan CV berhasil dikirim! Tim kami akan segera menghubungi WhatsApp Anda.';
+      toast.success(message);
+      return { valid: true, message };
     } catch {
-      const localEntry = { ...payload, id: Date.now() };
-      setCvOrders((prev) => [localEntry, ...prev]);
-      toast.success(validation.message);
-      return { valid: true, order: localEntry, message: validation.message };
+      const message = 'Pesanan belum dapat dikonfirmasi tersimpan. Periksa koneksi sebelum mencoba lagi.';
+      toast.error(message);
+      return { valid: false, message };
     }
   };
 
   const updateCVStatus = async (id, newStatus) => {
-    setCvOrders((prev) =>
-      prev.map((order) => (order.id === id ? { ...order, status: newStatus } : order))
-    );
-
+    if (!isAdmin) return false;
     try {
-      const { error: updateErr } = await supabase
-        .from('cv_orders')
-        .update({ status: newStatus })
-        .eq('id', id);
-
-      if (updateErr) {
-        if (updateErr.code === '42501' || updateErr.message?.toLowerCase().includes('permission denied')) {
-          toast.error('Perubahan status berhasil di UI, namun RLS Supabase menolak UPDATE.', { duration: 4000 });
-        } else {
-          toast.error(`Gagal memperbarui status di cloud: ${updateErr.message}`);
-        }
-        return false;
-      }
-
-      toast.success(`Status pesanan berhasil diubah menjadi "${newStatus}".`);
+      const { data, error } = await supabase.from('cv_orders')
+        .update({ status: newStatus }).eq('id', id).select('id').maybeSingle();
+      if (error || !data) throw error || new Error('Tidak ada pesanan yang dapat diubah');
+      await fetchCVOrders();
+      toast.success('Status pesanan berhasil diperbarui.');
       return true;
     } catch {
-      toast.error('Terjadi kesalahan saat memperbarui status pesanan.');
+      toast.error('Status pesanan tidak tersimpan. Periksa izin admin dan koneksi.');
       return false;
     }
   };
 
   const deleteCVOrder = async (id) => {
+    if (!isAdmin) return false;
     try {
-      const { error } = await supabase
-        .from('cv_orders')
-        .delete()
-        .eq('id', id);
-
-      if (error) {
-        toast.error('Gagal menghapus data: ' + error.message);
-        throw error;
-      }
-
-      setCvOrders((prev) => prev.filter((order) => order.id !== id));
-      toast.success('Pesanan CV berhasil dihapus permanen dari Supabase.');
+      const { data, error } = await supabase.from('cv_orders')
+        .delete().eq('id', id).select('id').maybeSingle();
+      if (error || !data) throw error || new Error('Tidak ada pesanan yang dapat dihapus');
+      await fetchCVOrders();
+      toast.success('Pesanan CV berhasil dihapus.');
       return true;
     } catch {
+      toast.error('Pesanan tidak dapat dihapus. Periksa izin admin dan koneksi.');
       return false;
     }
   };
 
-  return {
-    cvOrders,
-    loading,
-    fetchCVOrders,
-    createCVOrder,
-    updateCVStatus,
-    deleteCVOrder,
-  };
+  return { cvOrders: isAdmin ? cvOrders : [], loading, fetchCVOrders, createCVOrder, updateCVStatus, deleteCVOrder };
 }

@@ -697,7 +697,8 @@ const OrderCVModal = ({ isOpen, onClose, onSubmitOrder, selectedPackage = 'Paket
 
       // 2. Simpan pesanan ke Supabase / State untuk tracking
       if (onSubmitOrder) {
-        await onSubmitOrder({ name: cleanName, whatsapp: cleanWa, packageType });
+        const result = await onSubmitOrder({ name: cleanName, whatsapp: cleanWa, packageType });
+        if (!result?.valid) return;
       }
 
       setName('');
@@ -1450,7 +1451,7 @@ export default function JobBoard() {
     createCVOrder,
     updateCVStatus,
     deleteCVOrder,
-  } = useCVOrders();
+  } = useCVOrders({ isAdmin: isLoggedIn });
   const {
     isLive: isStatsLive,
     fetchStats,
@@ -1491,17 +1492,16 @@ export default function JobBoard() {
   }, [selectedJob]);
 
   const handleApplyTrack = async (jobId) => {
-    const targetJob = jobs.find(j => j.id === jobId);
-    const newCount = (targetJob?.applicantsCount || 0) + 1;
-    setJobs(jobs.map(j => j.id === jobId ? { ...j, applicantsCount: newCount } : j));
-    try {
-      await updateJob({ ...targetJob, applicantsCount: newCount });
-    } catch {
-      // ignore
-    }
+    // jobs publik read-only: jangan UPDATE applicantsCount dari browser.
+    // Tautan lamaran tetap berfungsi; tracking tepercaya perlu endpoint terpisah.
+    void jobId;
   };
 
   const handleAddJob = async (newJobData) => {
+    if (!isLoggedIn) {
+      toast.error('Publik hanya dapat membaca lowongan. Hubungi admin untuk memasang lowongan.');
+      return null;
+    }
     await createJob(newJobData);
   };
 
@@ -1556,7 +1556,7 @@ export default function JobBoard() {
 
       <div>
         <Navbar
-          onOpenPostJob={() => setIsPostJobOpen(true)}
+          onOpenPostJob={() => toast.error('Pemasangan lowongan hanya melalui admin LokerResmi.id.')}
           onOpenAdminLogin={() => setIsAdminLoginOpen(true)}
           isAdmin={false}
           isDark={isDark}

@@ -37,69 +37,17 @@ CREATE TABLE IF NOT EXISTS public.cv_orders (
   created_at TIMESTAMPTZ DEFAULT NOW()
 );
 
--- 3. Berikan Hak Akses (Grants) ke role anon dan authenticated
+-- 3. Bootstrap bukan migration keamanan. Setelah bootstrap, jalankan berurutan
+-- supabase/migrations/20261017000{1,2,3}00_lokerresmi_*.sql.
+-- Tidak ada grant API/policy jobs dan cv_orders di sini agar kebijakan lama
+-- tidak membatalkan hardening saat bootstrap dijalankan ulang.
 GRANT USAGE ON SCHEMA public TO anon, authenticated, service_role;
-GRANT ALL ON TABLE public.jobs TO anon, authenticated, service_role;
-GRANT ALL ON TABLE public.cv_orders TO anon, authenticated, service_role;
-GRANT USAGE, SELECT ON ALL SEQUENCES IN SCHEMA public TO anon, authenticated, service_role;
+GRANT ALL ON TABLE public.jobs TO service_role;
+GRANT ALL ON TABLE public.cv_orders TO service_role;
 
 -- 4. Aktifkan Row Level Security (RLS)
 ALTER TABLE public.jobs ENABLE ROW LEVEL SECURITY;
 ALTER TABLE public.cv_orders ENABLE ROW LEVEL SECURITY;
-
--- 5. Buat Kebijakan RLS (Policies) untuk Tabel jobs
--- DROP kebijakan lama agar pembaruan aman dieksekusi berulang kali
-DROP POLICY IF EXISTS "Allow select jobs" ON public.jobs;
-DROP POLICY IF EXISTS "Allow public select jobs" ON public.jobs;
-CREATE POLICY "Allow public select jobs" ON public.jobs
-  FOR SELECT TO anon, authenticated
-  USING (true);
-
-DROP POLICY IF EXISTS "Allow insert jobs" ON public.jobs;
-DROP POLICY IF EXISTS "Allow public insert jobs" ON public.jobs;
-CREATE POLICY "Allow public insert jobs" ON public.jobs
-  FOR INSERT TO anon, authenticated
-  WITH CHECK (true);
-
-DROP POLICY IF EXISTS "Allow update jobs" ON public.jobs;
-DROP POLICY IF EXISTS "Allow authenticated update jobs" ON public.jobs;
-CREATE POLICY "Allow authenticated update jobs" ON public.jobs
-  FOR UPDATE TO authenticated
-  USING (auth.role() = 'authenticated')
-  WITH CHECK (auth.role() = 'authenticated');
-
-DROP POLICY IF EXISTS "Allow delete jobs" ON public.jobs;
-DROP POLICY IF EXISTS "Allow authenticated delete jobs" ON public.jobs;
-CREATE POLICY "Allow authenticated delete jobs" ON public.jobs
-  FOR DELETE TO authenticated
-  USING (auth.role() = 'authenticated');
-
--- 6. Buat Kebijakan RLS (Policies) untuk Tabel cv_orders
--- Melindungi privasi pelamar (PII): Hanya admin authenticated yang bisa membaca, mengedit, atau menghapus pesanan
-DROP POLICY IF EXISTS "Allow select cv_orders" ON public.cv_orders;
-DROP POLICY IF EXISTS "Allow authenticated select cv_orders" ON public.cv_orders;
-CREATE POLICY "Allow authenticated select cv_orders" ON public.cv_orders
-  FOR SELECT TO authenticated
-  USING (auth.role() = 'authenticated');
-
-DROP POLICY IF EXISTS "Allow insert cv_orders" ON public.cv_orders;
-DROP POLICY IF EXISTS "Allow public insert cv_orders" ON public.cv_orders;
-CREATE POLICY "Allow public insert cv_orders" ON public.cv_orders
-  FOR INSERT TO anon, authenticated
-  WITH CHECK (true);
-
-DROP POLICY IF EXISTS "Allow update cv_orders" ON public.cv_orders;
-DROP POLICY IF EXISTS "Allow authenticated update cv_orders" ON public.cv_orders;
-CREATE POLICY "Allow authenticated update cv_orders" ON public.cv_orders
-  FOR UPDATE TO authenticated
-  USING (auth.role() = 'authenticated')
-  WITH CHECK (auth.role() = 'authenticated');
-
-DROP POLICY IF EXISTS "Allow delete cv_orders" ON public.cv_orders;
-DROP POLICY IF EXISTS "Allow authenticated delete cv_orders" ON public.cv_orders;
-CREATE POLICY "Allow authenticated delete cv_orders" ON public.cv_orders
-  FOR DELETE TO authenticated
-  USING (auth.role() = 'authenticated');
 
 -- 7. Data Awal Contoh untuk cv_orders (Optional)
 INSERT INTO public.cv_orders (name, whatsapp, package, status, date)
