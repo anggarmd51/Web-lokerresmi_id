@@ -1,6 +1,7 @@
 import React, { useState, useRef, useEffect } from 'react';
 import { Share2, MessageCircle, Copy, Check, Linkedin, Send } from 'lucide-react';
 import { toast } from 'react-hot-toast';
+import { jobUrl } from '../lib/seo';
 
 export default function QuickShareButton({ job, className = '' }) {
   const [copied, setCopied] = useState(false);
@@ -16,10 +17,7 @@ export default function QuickShareButton({ job, className = '' }) {
 
   if (!job) return null;
 
-  const currentUrl = typeof window !== 'undefined'
-    ? `${window.location.origin}${window.location.pathname}#job-${job.id}`
-    : `https://lokerresmi.id#job-${job.id}`;
-
+  const currentUrl = jobUrl(job.id);
   const shareTitle = `Lowongan ${job.title} - ${job.company}`;
   const shareText = `📌 Info Lowongan Kerja di Lokerresmi.id:\n\nPosisi: *${job.title}*\nPerusahaan: *${job.company}*\nLokasi: ${job.location}\nKisaran Gaji: ${job.salary}\n\nLamar segera melalui tautan resmi:\n${currentUrl}`;
 

@@ -5,6 +5,8 @@ import { supabase } from '../lib/supabase';
 import { sortJobsByFeatured } from '../lib/utils';
 import useAuth from '../hooks/useAuth';
 import useJobs from '../hooks/useJobs';
+import useJobRoute from '../hooks/useJobRoute';
+import { jobPath, updatePageMetadata } from '../lib/seo';
 import useJobActions from '../hooks/useJobActions';
 import useCVOrders from '../hooks/useCVOrders';
 import useSiteStats from '../hooks/useSiteStats';
@@ -37,37 +39,6 @@ const formatJobTime = (dateVal) => {
   const hours = String(date.getHours()).padStart(2, '0');
   const minutes = String(date.getMinutes()).padStart(2, '0');
   return `${hours}:${minutes} WIB`;
-};
-
-const setMetaTag = (selector, attr, value, content) => {
-  let tag = document.head.querySelector(selector);
-
-  if (!tag) {
-    tag = document.createElement('meta');
-    tag.setAttribute(attr, value);
-    document.head.appendChild(tag);
-  }
-
-  tag.setAttribute('content', content);
-};
-
-const updateOpenGraphMeta = (job = null) => {
-  const siteName = 'Lokerresmi.id';
-  const defaultTitle = 'Lokerresmi.id | Portal Lowongan Kerja & CV ATS';
-  const defaultDescription = 'Temukan lowongan kerja terbaru, peluang karier, dan layanan pembuatan CV ATS profesional di Lokerresmi.id.';
-  const defaultImage = '/logo_og.png';
-
-  document.title = job ? `${job.title} | ${job.company} - ${siteName}` : defaultTitle;
-
-  setMetaTag('meta[property="og:title"]', 'property', 'og:title', job ? `${job.title} di ${job.company}` : defaultTitle);
-  setMetaTag('meta[property="og:description"]', 'property', 'og:description', job ? `${job.company} • ${job.location} • ${job.salary}. ${job.desc?.slice(0, 150) || 'Lihat detail lowongan dan segera kirim lamaran.'}` : defaultDescription);
-  setMetaTag('meta[property="og:image"]', 'property', 'og:image', defaultImage);
-  setMetaTag('meta[property="og:url"]', 'property', 'og:url', window.location.href);
-  setMetaTag('meta[property="og:site_name"]', 'property', 'og:site_name', siteName);
-  setMetaTag('meta[name="twitter:title"]', 'name', 'twitter:title', job ? `${job.title} di ${job.company}` : defaultTitle);
-  setMetaTag('meta[name="twitter:description"]', 'name', 'twitter:description', job ? `${job.company} • ${job.location} • ${job.salary}` : defaultDescription);
-  setMetaTag('meta[name="twitter:image"]', 'name', 'twitter:image', defaultImage);
-  setMetaTag('meta[name="twitter:card"]', 'name', 'twitter:card', 'summary_large_image');
 };
 
 const Navbar = ({ onOpenPostJob, onOpenAdminLogin, isAdmin, isDark, toggleDarkMode }) => {
@@ -329,7 +300,15 @@ const JobFeed = ({ jobs, onSelectJob, searchTerm, selectedTag, onResetFilters, l
 
                   <div className="mb-4 flex items-start justify-between gap-3">
                     <div className="min-w-0 flex-1">
-                      <h3 className="mb-1 text-base font-bold text-navy dark:text-white transition group-hover:text-teal sm:text-lg">{job.title}</h3>
+                      <h3 className="mb-1 text-base font-bold text-navy dark:text-white transition group-hover:text-teal sm:text-lg">
+                        <a href={jobPath(job.id)} onClick={(event) => {
+                          event.stopPropagation();
+                          if (event.button === 0 && !event.metaKey && !event.ctrlKey && !event.shiftKey && !event.altKey) {
+                            event.preventDefault();
+                            onSelectJob(job);
+                          }
+                        }}>{job.title}</a>
+                      </h3>
                       <p className="text-xs font-semibold text-slate-600 dark:text-slate-300 sm:text-sm">{job.company}</p>
                     </div>
                     <span className="inline-flex shrink-0 rounded bg-teal/10 px-2.5 py-1 text-[10px] font-bold text-teal sm:text-xs">{job.category}</span>
@@ -599,7 +578,7 @@ const JobDetailModal = ({ job, onClose, onApplyTrack }) => {
     : parseRequirements(job.requirements);
 
   return (
-    <div className="fixed inset-0 z-50 bg-black/60 backdrop-blur-sm flex items-center justify-center p-3 sm:p-4">
+    <div role="dialog" aria-modal="true" aria-labelledby="job-detail-title" className="fixed inset-0 z-50 bg-black/60 backdrop-blur-sm flex items-center justify-center p-3 sm:p-4">
       <div className="bg-white dark:bg-slate-900 rounded-2xl max-w-lg w-full p-4 sm:p-6 shadow-2xl relative max-h-[92vh] sm:max-h-[90vh] overflow-y-auto border border-transparent dark:border-slate-800">
         <button
           onClick={onClose}
@@ -621,7 +600,7 @@ const JobDetailModal = ({ job, onClose, onApplyTrack }) => {
             <span>Dipasang: {formatJobDate(job.created_at || job.date)}</span>
           </span>
         </div>
-        <h2 className="text-xl sm:text-2xl font-bold text-navy dark:text-white mt-1 mb-1 leading-snug">{job.title}</h2>
+        <h2 id="job-detail-title" className="text-xl sm:text-2xl font-bold text-navy dark:text-white mt-1 mb-1 leading-snug">{job.title}</h2>
         <p className="text-slate-600 dark:text-slate-300 font-semibold mb-3 sm:mb-4 text-xs sm:text-sm md:text-base">{job.company} • {job.location}</p>
         <div className="bg-slate-50 dark:bg-slate-800/80 p-3 sm:p-4 rounded-xl mb-4 text-xs sm:text-sm space-y-2 border border-slate-100 dark:border-slate-700">
           <div className="flex justify-between gap-3 text-slate-700 dark:text-slate-200"><strong>Kisaran Gaji:</strong> <span className="text-teal font-bold text-right">{job.salary}</span></div>
@@ -1440,7 +1419,8 @@ const SuperAdminDashboard = ({
 };
 
 export default function JobBoard() {
-  const { jobs, activeJobs, loading, setJobs } = useJobs();
+  const { jobs, activeJobs, loading, error: jobsError, setJobs } = useJobs();
+  const { route, openJob, closeJob } = useJobRoute();
   const { createJob, updateJobStatus, toggleFeatured, deleteJob, updateJob } = useJobActions({ setJobs });
   const { isLoggedIn, loading: authLoading, login, logout } = useAuth();
   const { isDark, toggleDarkMode } = useDarkMode();
@@ -1459,7 +1439,6 @@ export default function JobBoard() {
   } = useSiteStats();
   const [searchTerm, setSearchTerm] = useState('');
   const [selectedTag, setSelectedTag] = useState('');
-  const [selectedJob, setSelectedJob] = useState(null);
   const [isPostJobOpen, setIsPostJobOpen] = useState(false);
   const [isOrderCVOpen, setIsOrderCVOpen] = useState(false);
   const [isAICheckerOpen, setIsAICheckerOpen] = useState(false);
@@ -1487,9 +1466,13 @@ export default function JobBoard() {
     return (jobs || []).filter((j) => j.status === 'Aktif');
   }, [activeJobs, jobs]);
 
+  const selectedJob = !route.invalid && route.isDetail
+    ? publicJobs.find((job) => String(job.id) === route.id) || null
+    : null;
+
   useEffect(() => {
-    updateOpenGraphMeta(selectedJob);
-  }, [selectedJob]);
+    updatePageMetadata(selectedJob, route, { loading, error: jobsError });
+  }, [selectedJob, route, loading, jobsError]);
 
   const handleApplyTrack = async (jobId) => {
     // jobs publik read-only: jangan UPDATE applicantsCount dari browser.
@@ -1552,7 +1535,7 @@ export default function JobBoard() {
   return (
     <div className="min-h-screen bg-light dark:bg-slate-950 flex flex-col justify-between transition-colors duration-200">
       {/* Google Jobs Structured Data (Schema.org JobPosting) */}
-      <JobPostingSchema job={selectedJob} jobs={publicJobs} />
+      <JobPostingSchema job={selectedJob} />
 
       <div>
         <Navbar
@@ -1570,7 +1553,7 @@ export default function JobBoard() {
         />
         <JobFeed
           jobs={publicJobs}
-          onSelectJob={setSelectedJob}
+          onSelectJob={openJob}
           searchTerm={searchTerm}
           selectedTag={selectedTag}
           loading={loading}
@@ -1588,7 +1571,20 @@ export default function JobBoard() {
       </div>
       <Footer />
 
-      <JobDetailModal job={selectedJob} onClose={() => setSelectedJob(null)} onApplyTrack={handleApplyTrack} />
+      {(route.isDetail || route.invalid) && !selectedJob && (
+        <div role="dialog" aria-modal="true" aria-labelledby="job-route-status" className="fixed inset-0 z-50 bg-black/60 flex items-center justify-center p-4">
+          <section className="bg-white dark:bg-slate-900 rounded-2xl max-w-lg w-full p-6 shadow-2xl">
+            <h2 id="job-route-status" className="text-xl font-bold text-navy dark:text-white">
+              {loading ? 'Memuat lowongan...' : jobsError ? 'Lowongan belum dapat dimuat' : 'Lowongan tidak ditemukan'}
+            </h2>
+            <p className="my-4 text-slate-600 dark:text-slate-300">
+              {loading ? 'Mohon tunggu sebentar.' : jobsError ? 'Silakan muat ulang halaman untuk mencoba lagi.' : 'Lowongan ini tidak tersedia atau sudah tidak aktif.'}
+            </p>
+            <button onClick={closeJob} className="bg-teal text-navy font-bold px-4 py-2 rounded-xl">Kembali ke daftar lowongan</button>
+          </section>
+        </div>
+      )}
+      <JobDetailModal job={selectedJob} onClose={closeJob} onApplyTrack={handleApplyTrack} />
       <PostJobModal isOpen={isPostJobOpen} onClose={() => setIsPostJobOpen(false)} onAddJob={handleAddJob} />
       <OrderCVModal
         isOpen={isOrderCVOpen}

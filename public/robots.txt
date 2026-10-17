@@ -1,0 +1,3 @@
+User-agent: *
+Allow: /
+Sitemap: https://lokerresmi.vercel.app/sitemap.xml

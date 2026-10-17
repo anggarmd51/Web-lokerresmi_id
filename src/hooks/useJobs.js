@@ -4,10 +4,12 @@ import { supabase } from '../lib/supabase';
 export default function useJobs() {
   const [jobs, setJobs] = useState([]);
   const [loading, setLoading] = useState(true);
+  const [error, setError] = useState(false);
 
   const fetchJobs = async () => {
     try {
       setLoading(true);
+      setError(false);
 
       const { data, error } = await supabase
         .from('jobs')
@@ -23,6 +25,7 @@ export default function useJobs() {
         setJobs([]);
       }
     } catch {
+      setError(true);
       setJobs([]);
     } finally {
       setLoading(false);
@@ -39,6 +42,7 @@ export default function useJobs() {
     jobs,
     activeJobs,
     loading,
+    error,
     setJobs,
   };
 }
