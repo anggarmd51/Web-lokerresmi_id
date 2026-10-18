@@ -149,8 +149,9 @@ test('modal hanya memanggil window.open untuk valid; valid submit menampilkan fa
 
 test('JobBoard me-wire dua entry employer, CTA job ke cover letter, generic cover-letter reset, dan pricing mobile tanpa horizontal scroll', async () => {
   const source = await readFile(new URL('../src/components/JobBoard.jsx', import.meta.url), 'utf8');
-  assert.match(source, /onOpenPostJob=\{\(\) => openModal\('employer-inquiry'\)\}/);
-  assert.match(source, /<Footer onOpenEmployerInquiry=\{\(\) => openModal\('employer-inquiry'\)\}/);
+  assert.match(source, /onOpenPostJob=\{\(\) => handleOpenEmployerInquiry\('navbar'\)\}/);
+  assert.match(source, /<Footer onOpenEmployerInquiry=\{\(\) => handleOpenEmployerInquiry\('footer'\)\}/);
+  assert.match(source, /trackEmployerInquiry\(source\);\s+openModal\('employer-inquiry'\)/);
   assert.match(source, /onOpenCoverLetter=\{handleOpenCoverLetter\}/);
   assert.match(source, /openModal\('cover-letter', job \? \{ title: job\.title, company: job\.company \} : null\)/);
   assert.match(source, /onOpenCoverLetter=\{\(\) => handleOpenCoverLetter\(\)\}/);

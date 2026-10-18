@@ -3,6 +3,7 @@ import { Calendar, Facebook, Instagram, Linkedin, Moon, Music2, Search, SearchX,
 import { toast } from 'react-hot-toast';
 import { supabase } from '../lib/supabase';
 import { sortJobsByFeatured } from '../lib/utils';
+import { trackApply, trackEmployerInquiry, trackCVPackage } from '../lib/analytics';
 import useAuth from '../hooks/useAuth';
 import useJobs from '../hooks/useJobs';
 import useJobRoute from '../hooks/useJobRoute';
@@ -539,6 +540,7 @@ const JobDetailModal = ({ job, onClose, onApplyTrack, onOpenCoverLetter }) => {
   if (job.status && job.status !== 'Aktif') return null;
 
   const handleApply = () => {
+    trackApply(job);
     if (!job.applyTarget || !job.applyTarget.trim()) {
       toast.error(`Informasi lamaran untuk posisi ${job.title} belum tersedia.`);
       return;
@@ -737,7 +739,10 @@ const OrderCVModal = ({ isOpen, onClose, onSubmitOrder, selectedPackage = 'Paket
             <label className="block font-semibold text-slate-700 dark:text-slate-300 mb-1">Pilih Paket Layanan</label>
             <select
               value={packageType}
-              onChange={e => setPackageType(e.target.value)}
+              onChange={e => {
+                setPackageType(e.target.value);
+                trackCVPackage(e.target.value, 'order_form');
+              }}
               className="w-full border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-800 text-slate-900 dark:text-white p-2.5 sm:p-3 rounded-xl focus:ring-2 focus:ring-teal outline-none cursor-pointer"
             >
               <option value="Paket Express (Rp 49.000)">Paket Express (Rp 49.000)</option>
@@ -1457,8 +1462,14 @@ export default function JobBoard() {
   const handleOpenOrderCV = (packageName, replace = false) => {
     if (packageName) {
       setSelectedPackage(packageName);
+      trackCVPackage(packageName, replace ? 'ai_upsell' : 'pricing');
     }
     openModal('cv-order', null, { replace });
+  };
+
+  const handleOpenEmployerInquiry = (source) => {
+    trackEmployerInquiry(source);
+    openModal('employer-inquiry');
   };
 
   // Auto-Increment Total Kunjungan Web terhubung ke tabel Supabase 'site_stats' (validasi session storage)
@@ -1547,7 +1558,7 @@ export default function JobBoard() {
 
       <div>
         <Navbar
-          onOpenPostJob={() => openModal('employer-inquiry')}
+          onOpenPostJob={() => handleOpenEmployerInquiry('navbar')}
           onOpenAdminLogin={() => openModal('admin-login')}
           isAdmin={false}
           isDark={isDark}
@@ -1577,7 +1588,7 @@ export default function JobBoard() {
         />
         <CommunitySection />
       </div>
-      <Footer onOpenEmployerInquiry={() => openModal('employer-inquiry')} />
+      <Footer onOpenEmployerInquiry={() => handleOpenEmployerInquiry('footer')} />
 
       {!modal && (route.isDetail || route.invalid) && !selectedJob && (
         <div role="dialog" aria-modal="true" aria-labelledby="job-route-status" className="fixed inset-0 z-50 bg-black/60 flex items-center justify-center p-4">

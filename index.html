@@ -3,6 +3,23 @@
   <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <!-- GA4: set VITE_GA_MEASUREMENT_ID and rebuild to enable tracking. -->
+    <script>
+      (() => {
+        const measurementId = '%VITE_GA_MEASUREMENT_ID%';
+        if (!/^G-[A-Z0-9]+$/.test(measurementId) || measurementId === 'G-XXXXXXXXXX') return;
+
+        window.dataLayer = window.dataLayer || [];
+        window.gtag = function () { window.dataLayer.push(arguments); };
+        window.gtag('js', new Date());
+        window.gtag('config', measurementId);
+
+        const script = document.createElement('script');
+        script.async = true;
+        script.src = 'https://www.googletagmanager.com/gtag/js?id=' + encodeURIComponent(measurementId);
+        document.head.appendChild(script);
+      })();
+    </script>
     <title>Lokerresmi.id - Portal Lowongan Kerja Terverifikasi, CV ATS & Karier Terpercaya</title>
     <meta name="description" content="Temukan ribuan lowongan kerja terbaru, tips karier profesional, layanan pembuatan CV ATS, dan peluang magang terbaik di Indonesia." />
     <link rel="canonical" href="https://lokerresmi.vercel.app/" />
