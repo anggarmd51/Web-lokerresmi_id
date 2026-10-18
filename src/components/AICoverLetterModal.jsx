@@ -20,10 +20,8 @@ import {
 } from 'lucide-react';
 import { toast } from 'react-hot-toast';
 import { requestGemini } from '../lib/gemini';
+import { SAMPLE_PDF_BASE64, decodeSamplePdf } from '../lib/sampleCv';
 
-// Minimal sample PDF (base64) for instant 1-click test
-const SAMPLE_PDF_BASE64 =
-  'JVBERi0xLjcKCjEgMCBvYmoKPDwKL1R5cGUgL0NhdGFsb2cKL1BhZ2VzIDIgMCBSCj4+CmVuZG9iagoKMiAwIG9iago8PAovVHlwZSAvUGFnZXMKL0tpZHMgWzMgMCBSXQovQ291bnQgMQo+PgplbmRvYmoKCjMgMCBvYmoKPDwKL1R5cGUgL1BhZ2UKL1BhcmVudCAyIDAgUgovTWVkaWFCb3ggWzAgMCA2MTIgNzkyXQovQ29udGVudHMgNCAwIFIKPj4KZW5kb2JqCgo0IDAgb2JqCjw8Ci9MZW5ndGggMTg5Cj4+CnN0cmVhbQpCVAovRjEgMTIgVGYKMTAwIDcwMCBUZAooQU5ESCBQUkFUQU1BIC0gRnJvbnRlbmQgRGV2ZWxvcGVyKSBUagowIC0yMCBUZAooRW1haWw6IGFuZGkucHJhdGFtYUBnbWFpbC5jb20gfCBXaGF0c0FwcDogMDg1MTc5OTA1MDE5KSBUagowIC0yMCBUZAooUGVuZ2FsYW1hbjogRnJvbnRlbmQgRW5naW5lZXIgc2VsYW1hIDIgdGFodW4gbWVuZ2d1bmFrYW4gUmVhY3QsIFRhaWx3aW5kLCBzb3VyY2UgY29udHJvbCBHaXQpIFRqCjAgLTIwIFRkCihQZW5kaWRpa2FuOiBTMVRla25payBJbmZvcm1hdGlrYSBJUEsgMy42MCkgVGoKRVQKZW5kc3RyZWFtCmVuZG9iagoKeHJlZgowIDUKMDAwMDAwMDAwMCA2NTUzNSBmIAowMDAwMDAwMDEwIDAwMDAwIG4gCjAwMDAwMDAwNjAgMDAwMDAgbiAKMDAwMDAwMDExOSAwMDAwMCBuIAowMDAwMDAwMjE3IDAwMDAwIG4gCnRyYWlsZXIKPDwKL1NpemUgNQovUm9vdCAxIDAgUgo+PgpzdGFydHhyZWYKMzUwCiUlRU9GCg==';
 
 // Tone options
 const TONE_OPTIONS = [
@@ -277,7 +275,7 @@ export default function AICoverLetterModal({ isOpen, onClose, onOpenOrderModal, 
 
   // Provide quick sample PDF option
   const handleUseSample = () => {
-    const sampleBlob = new Blob([SAMPLE_PDF_BASE64], { type: 'application/pdf' });
+    const sampleBlob = new Blob([decodeSamplePdf(SAMPLE_PDF_BASE64)], { type: 'application/pdf' });
     const sampleFile = new File([sampleBlob], 'Contoh_CV_ATS_Lokerresmi.pdf', {
       type: 'application/pdf',
       lastModified: Date.now(),
