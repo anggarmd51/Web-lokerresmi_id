@@ -170,16 +170,12 @@ export function createHandler({ fetchImpl = globalThis.fetch, env = process.env,
               const upstream = await fetchImpl(`https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent`, {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json', 'x-goog-api-key': apiKey },
-                body: JSON.stringify({
-                  ...payload,
-                  generationConfig: {
-                    ...payload.generationConfig,
-                    ...(model.startsWith('gemini-3') ? { thinkingConfig: { thinkingLevel: model.includes('flash-lite') ? 'minimal' : 'low' } } : {}),
-                  },
-                }),
+                body: JSON.stringify(payload),
                 signal: controller.signal,
               });
               if (!upstream.ok) {
+                // Status-only diagnostics: never log response bodies or credentials.
+                console.warn('Gemini upstream request failed', { type: body.type, model, status: upstream.status });
                 if (upstream.status === 429) throw new ServiceError(429, 'RATE_LIMITED', 'Layanan AI sedang sibuk. Silakan coba lagi nanti.');
                 throw new ServiceError(502, 'UPSTREAM_ERROR', 'Layanan AI belum dapat memproses permintaan.');
               }
