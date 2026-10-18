@@ -1,6 +1,6 @@
-export const SITE_URL = 'https://lokerresmi.vercel.app';
-export const jobPath = (id) => `/lowongan/${encodeURIComponent(String(id))}`;
-export const jobUrl = (id) => `${SITE_URL}${jobPath(id)}`;
+import { SITE_URL, jobPath, jobUrl } from './jobUrls.js';
+export { SITE_URL, jobPath, jobUrl };
+import { createJobPostingJsonLd } from './jobPosting.js';
 import { getLandingPage } from './landingPages.js';
 
 export function readJobRoute(location) {
@@ -64,7 +64,7 @@ export function updatePageMetadata(job, route, { loading = false, error = false,
   }
   canonical.setAttribute('href', url);
   setMeta('meta[name="description"]', 'name', 'description', description);
-  setMeta('meta[name="robots"]', 'name', 'robots', route.invalid || (route.isDetail && !job) || isEmptyLanding ? 'noindex,follow' : 'index,follow');
+  setMeta('meta[name="robots"]', 'name', 'robots', route.invalid || (route.isDetail && (!job || !createJobPostingJsonLd(job))) || isEmptyLanding ? 'noindex,follow' : 'index,follow');
   for (const [name, content] of Object.entries({
     'og:type': 'website', 'og:title': title, 'og:description': description,
     'og:url': url, 'og:image': image, 'og:image:secure_url': image, 'og:site_name': 'Lokerresmi.id',

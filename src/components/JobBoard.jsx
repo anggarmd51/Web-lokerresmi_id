@@ -301,7 +301,7 @@ const JobFeed = ({ jobs, onSelectJob, searchTerm, selectedTag, onResetFilters, l
                   style={{ animationDelay: `${index * 80}ms` }}
                 >
                   {isFeatured && (
-                    <span className="absolute -top-3 right-4 bg-teal text-navy text-[10px] font-extrabold px-3 py-1 rounded-full uppercase tracking-wider shadow">🔥 PREMIUM</span>
+                    <span className="absolute -top-3 right-4 bg-teal text-navy text-[10px] font-extrabold px-3 py-1 rounded-full uppercase tracking-wider shadow">FEATURED · PENEMPATAN UNGGULAN</span>
                   )}
 
                   <div className="mb-4 flex items-start justify-between gap-3">

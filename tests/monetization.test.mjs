@@ -76,12 +76,18 @@ function collect(tree, type) {
 async function loadEmployerModal() {
   const react = makeReactMock();
   const toastCalls = [];
+  const analyticsCalls = [];
   const toast = synthetic('toast', { toast: { error: (message) => toastCalls.push(message) } });
+  const analytics = synthetic('analytics', {
+    trackFeaturedJobPackage: (...args) => analyticsCalls.push(['package', ...args]),
+    trackEmployerInquiryHandoff: (...args) => analyticsCalls.push(['handoff', ...args]),
+  });
   const namespace = await loadJsx(fileURLToPath(new URL('src/components/EmployerInquiryModal.jsx', root)), {
     react: react.module,
     'react-hot-toast': toast,
+    '../lib/analytics': analytics,
   });
-  return { Modal: namespace.default, buildEmployerInquiry: namespace.buildEmployerInquiry, react, toastCalls };
+  return { Modal: namespace.default, buildEmployerInquiry: namespace.buildEmployerInquiry, react, toastCalls, analyticsCalls };
 }
 
 test('buildEmployerInquiry menolak perusahaan/kebutuhan kosong atau hanya spasi', async () => {
@@ -95,18 +101,24 @@ test('buildEmployerInquiry menolak perusahaan/kebutuhan kosong atau hanya spasi'
   }
 });
 
-test('buildEmployerInquiry menerima nomor 08 dan +62, lalu meng-encode seluruh field ke nomor admin', async () => {
+test('buildEmployerInquiry menerima nomor 08 dan +62, lalu meng-encode paket dan seluruh field ke nomor admin', async () => {
   const { buildEmployerInquiry } = await loadEmployerModal();
-  const first = buildEmployerInquiry({ company: 'PT Maju & Anak', whatsapp: '0812 3456-7890', needs: '2 Sales / lokasi Jakarta & remote' });
+  const first = buildEmployerInquiry({ company: 'PT Maju & Anak', whatsapp: '0812 3456-7890', needs: '2 Sales / lokasi Jakarta & remote', packageName: 'Featured Job' });
   const second = buildEmployerInquiry({ company: 'PT Maju', whatsapp: '+62 (812) 3456.7890', needs: 'Butuh kandidat senior' });
-  for (const [url, company, needs] of [[first, 'PT Maju & Anak', '2 Sales / lokasi Jakarta & remote'], [second, 'PT Maju', 'Butuh kandidat senior']]) {
+  for (const [url, company, needs, packageName] of [[first, 'PT Maju & Anak', '2 Sales / lokasi Jakarta & remote', 'Featured Job'], [second, 'PT Maju', 'Butuh kandidat senior', 'Standard']]) {
     assert.match(url, /^https:\/\/wa\.me\/6285179905019\?text=/);
     const message = decodeURIComponent(new URL(url).searchParams.get('text'));
     assert.match(message, new RegExp(`Nama Perusahaan: ${company.replace(/[.*+?^${}()|[\\]\\]/g, '\\$&')}`));
     assert.match(message, /WhatsApp: 6281234567890/);
     assert.match(message, new RegExp(needs.replace(/[.*+?^${}()|[\\]\\]/g, '\\$&')));
+    assert.match(message, new RegExp(`Pilihan Paket Pemasangan: ${packageName}`));
     assert.ok(url.includes('%0A'), 'message must preserve encoded line breaks');
   }
+});
+
+test('buildEmployerInquiry menolak paket yang tidak terdaftar tanpa mengarang harga', async () => {
+  const { buildEmployerInquiry } = await loadEmployerModal();
+  assert.throws(() => buildEmployerInquiry({ company: 'PT Contoh', whatsapp: '081234567890', needs: 'Staff', packageName: 'Rp 1.000.000' }), /Pilih paket pemasangan/);
 });
 
 test('buildEmployerInquiry menolak nomor invalid dan tidak menghasilkan admin yang salah', async () => {
@@ -175,6 +187,12 @@ test('JobBoard mempertahankan copy upsell Rp99.000 dan target paket callback yan
     assert.match(modal, /<span>[^<]*Paket Profesional \(Rp 99\.000\)<\/span>/);
     assert.doesNotMatch(modal, /Mulai Rp 49k/);
   }
+});
+
+test('badge JobBoard menandai featured tanpa mengklaim bukti pembayaran', async () => {
+  const board = await readFile(new URL('../src/components/JobBoard.jsx', import.meta.url), 'utf8');
+  assert.match(board, /const isFeatured = job\.featured \|\| job\.is_featured \|\| false/);
+  assert.match(board, /FEATURED · PENEMPATAN UNGGULAN/);
 });
 
 test('cover letter mem-prefill job baru dan menghapus deskripsi/generated letter lama saat effect reset berjalan', async () => {

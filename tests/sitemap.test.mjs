@@ -10,6 +10,7 @@ import {
   validLastmod,
 } from '../api/sitemap.js';
 
+const completeJob = (overrides = {}) => ({ id: 42, title: 'Posisi', company: 'Perusahaan', status: 'Aktif', location: 'Medan', desc: 'Deskripsi pekerjaan', created_at: '2026-01-02T10:00:00Z', ...overrides });
 const root = fileURLToPath(new URL('..', import.meta.url));
 
 function response(rows, ok = true, status = 200) {
@@ -35,7 +36,7 @@ test('fetchActiveJobs paginates with explicit limit and offset', async () => {
   assert.equal(rows.length, PAGE_SIZE + 2);
   assert.equal(calls.length, 2);
   assert.equal(new URL(calls[0].url).searchParams.get('status'), 'eq.Aktif');
-  assert.equal(new URL(calls[0].url).searchParams.get('select'), 'id,created_at,status,location,category,title,desc,requirements');
+  assert.equal(new URL(calls[0].url).searchParams.get('select'), 'id,created_at,date_posted,valid_through,status,location,category,title,company,type,desc,requirements');
   assert.equal(new URL(calls[0].url).searchParams.get('limit'), String(PAGE_SIZE));
   assert.equal(new URL(calls[1].url).searchParams.get('offset'), String(PAGE_SIZE));
   assert.equal(calls[0].options.headers.apikey, 'anon-key');
@@ -44,8 +45,8 @@ test('fetchActiveJobs paginates with explicit limit and offset', async () => {
 
 test('renderSitemap always includes homepage and escapes XML while encoding IDs', () => {
   const xml = renderSitemap([
-    { id: 'a/b?x=1&y=2', created_at: '2026-03-04T00:00:00Z' },
-    { id: '<unsafe>', created_at: 'not-a-date' },
+    completeJob({ id: 'a/b?x=1&y=2', created_at: '2026-03-04T00:00:00Z' }),
+    completeJob({ id: '<unsafe>', date_posted: '2026-03-04', created_at: 'not-a-date' }),
   ]);
 
   assert.match(xml, /<loc>https:\/\/lokerresmi\.vercel\.app\/<\/loc>/);
@@ -109,7 +110,7 @@ test('handler returns XML with live detail URLs or a non-cacheable 503, never SP
     assert.match(missing.body, /^<\?xml/);
     process.env.VITE_SUPABASE_URL = 'https://project.supabase.co';
     process.env.VITE_SUPABASE_ANON_KEY = 'anon-key';
-    globalThis.fetch = async () => response([{ id: 42, created_at: '2026-10-17' }]);
+    globalThis.fetch = async () => response([completeJob({ id: 42, created_at: '2026-10-17' })]);
     const success = makeResponse();
     await handler({}, success);
     assert.equal(success.statusCode, 200);

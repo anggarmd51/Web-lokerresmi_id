@@ -1,10 +1,12 @@
 import React, { useEffect, useRef, useState } from 'react';
 import { toast } from 'react-hot-toast';
+import { trackEmployerInquiryHandoff, trackFeaturedJobPackage } from '../lib/analytics';
 
 // Gunakan kontak admin yang sama dengan alur pemesanan CV.
 const ADMIN_WHATSAPP = '6285179905019';
+export const EMPLOYER_PACKAGES = ['Standard', 'Featured Job', 'Paid placement'];
 
-export function buildEmployerInquiry({ company, whatsapp, needs }) {
+export function buildEmployerInquiry({ company, whatsapp, needs, packageName = 'Standard' }) {
   const cleanCompany = company.trim();
   const cleanNeeds = needs.trim();
   let cleanWhatsapp = whatsapp.trim().replace(/[\s().-]/g, '');
@@ -17,8 +19,11 @@ export function buildEmployerInquiry({ company, whatsapp, needs }) {
   if (!/^\d{8,15}$/.test(cleanWhatsapp)) {
     throw new Error('Masukkan nomor WhatsApp yang valid (8–15 digit, dengan kode negara).');
   }
+  if (!EMPLOYER_PACKAGES.includes(packageName)) {
+    throw new Error('Pilih paket pemasangan yang tersedia.');
+  }
 
-  const message = `Halo Admin Lokerresmi.id, saya ingin berkonsultasi tentang pemasangan lowongan dan rekrutmen.\n\nNama Perusahaan: ${cleanCompany}\nWhatsApp: ${cleanWhatsapp}\nKebutuhan Rekrutmen: ${cleanNeeds}`;
+  const message = `Halo Admin Lokerresmi.id, saya ingin berkonsultasi tentang pemasangan lowongan dan rekrutmen.\n\nPilihan Paket Pemasangan: ${packageName}\nNama Perusahaan: ${cleanCompany}\nWhatsApp: ${cleanWhatsapp}\nKebutuhan Rekrutmen: ${cleanNeeds}`;
   return `https://wa.me/${ADMIN_WHATSAPP}?text=${encodeURIComponent(message)}`;
 }
 
@@ -26,6 +31,7 @@ export default function EmployerInquiryModal({ isOpen, onClose }) {
   const [company, setCompany] = useState('');
   const [whatsapp, setWhatsapp] = useState('');
   const [needs, setNeeds] = useState('');
+  const [packageName, setPackageName] = useState('Standard');
   const [inquiryUrl, setInquiryUrl] = useState('');
   const dialogRef = useRef(null);
 
@@ -36,7 +42,7 @@ export default function EmployerInquiryModal({ isOpen, onClose }) {
     const handleKeyDown = (event) => {
       if (event.key === 'Escape') onClose();
       if (event.key !== 'Tab') return;
-      const focusable = dialogRef.current?.querySelectorAll('button, input, textarea, a[href]');
+      const focusable = dialogRef.current?.querySelectorAll('button, input, select, textarea, a[href]');
       if (!focusable?.length) return;
       const first = focusable[0];
       const last = focusable[focusable.length - 1];
@@ -60,7 +66,9 @@ export default function EmployerInquiryModal({ isOpen, onClose }) {
   const handleSubmit = (event) => {
     event.preventDefault();
     try {
-      const url = buildEmployerInquiry({ company, whatsapp, needs });
+      const url = buildEmployerInquiry({ company, whatsapp, needs, packageName });
+      trackFeaturedJobPackage(packageName, 'employer_inquiry');
+      trackEmployerInquiryHandoff(packageName, 'whatsapp');
       setInquiryUrl(url);
       window.open(url, '_blank', 'noopener,noreferrer');
     } catch (error) {
@@ -80,6 +88,13 @@ export default function EmployerInquiryModal({ isOpen, onClose }) {
           <div>
             <label htmlFor="employer-company" className="block mb-1 font-semibold text-slate-700 dark:text-slate-300">Nama Perusahaan</label>
             <input id="employer-company" autoComplete="organization" required maxLength={150} value={company} onChange={(event) => setCompany(event.target.value)} className={inputClass} placeholder="Contoh: PT Maju Bersama" />
+          </div>
+          <div>
+            <label htmlFor="employer-package" className="block mb-1 font-semibold text-slate-700 dark:text-slate-300">Paket Pemasangan</label>
+            <select id="employer-package" value={packageName} onChange={(event) => setPackageName(event.target.value)} className={inputClass}>
+              {EMPLOYER_PACKAGES.map((option) => <option key={option} value={option}>{option}</option>)}
+            </select>
+            <p className="mt-1 text-xs text-slate-500 dark:text-slate-400">Harga dan detail layanan dikonfirmasi admin; belum ada pembayaran melalui form ini.</p>
           </div>
           <div>
             <label htmlFor="employer-whatsapp" className="block mb-1 font-semibold text-slate-700 dark:text-slate-300">WhatsApp</label>

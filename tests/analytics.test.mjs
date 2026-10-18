@@ -88,6 +88,19 @@ test('employer inquiry and CV package helpers send the specified event payloads'
   ]);
 });
 
+test('featured package and employer handoff events contain package metadata only', async () => {
+  const calls = [];
+  const analytics = await loadAnalytics({ gtag: (...args) => calls.push(args) });
+
+  assert.equal(analytics.trackFeaturedJobPackage('Featured Job', 'employer_inquiry'), true);
+  assert.equal(analytics.trackEmployerInquiryHandoff('Paid placement', 'whatsapp'), true);
+  assert.deepEqual(plain(calls), [
+    ['event', 'select_featured_job_package', { package_name: 'Featured Job', source: 'employer_inquiry' }],
+    ['event', 'employer_inquiry_handoff', { package_name: 'Paid placement', source: 'whatsapp' }],
+  ]);
+  assert.doesNotMatch(JSON.stringify(calls), /company|whatsapp_number|phone|needs|081234567890|PT /i);
+});
+
 test('index bootstrap enables only a real non-placeholder GA measurement ID', async () => {
   const index = await readFile(new URL('../index.html', import.meta.url), 'utf8');
   const bootstrap = index.match(/<script>\s*([\s\S]*?)\s*<\/script>/)?.[1];

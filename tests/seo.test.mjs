@@ -41,7 +41,7 @@ test('parser menerima detail, trailing slash dan tautan lama; menolak path rusak
 test('metadata satu job konsisten dan kembali ke homepage tanpa duplikasi tag', () => {
   globalThis.document = mockDocument();
   try {
-    const job = { id: 42, title: 'Developer', company: 'PT Contoh', desc: 'Deskripsi lengkap', location: 'Jakarta' };
+    const job = { id: 42, title: 'Developer', company: 'PT Contoh', desc: 'Deskripsi lengkap', location: 'Jakarta', status: 'Aktif', created_at: '2026-01-01T00:00:00Z' };
     updatePageMetadata(job, readJobRoute(location('/lowongan/42')));
     const get = (selector, attr) => document.head.querySelector(selector).attributes[attr];
     assert.equal(get('link[rel="canonical"]', 'href'), jobUrl(42));
@@ -78,4 +78,17 @@ test('HTML awal dan share tidak memakai host lama atau hash job sebagai URL baru
   const share = readFileSync(new URL('../src/components/QuickShareButton.jsx', import.meta.url), 'utf8');
   assert.match(share, /const currentUrl = jobUrl\(job.id\)/);
   assert.doesNotMatch(share, /#job-/);
+});
+
+test('detail dengan deskripsi kosong atau negara remote tidak jelas diberi noindex', () => {
+  globalThis.document = mockDocument();
+  try {
+    for (const job of [
+      { id: 46, title: 'Sales Freelance', company: 'Employer', status: 'Aktif', desc: '', location: 'Medan', created_at: '2026-01-01T00:00:00Z' },
+      { id: 47, title: 'Network Architect', company: 'Employer', status: 'Aktif', desc: 'Uraian pekerjaan.', location: 'Remote', created_at: '2026-01-01T00:00:00Z' },
+    ]) {
+      updatePageMetadata(job, readJobRoute(location(`/lowongan/${job.id}`)));
+      assert.equal(document.head.querySelector('meta[name="robots"]').attributes.content, 'noindex,follow');
+    }
+  } finally { delete globalThis.document; }
 });

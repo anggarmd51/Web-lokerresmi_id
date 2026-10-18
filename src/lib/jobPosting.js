@@ -1,4 +1,4 @@
-import { jobUrl } from './seo.js';
+import { jobUrl } from './jobUrls.js';
 
 const HTML_ESCAPE = {
   '&': '&amp;',

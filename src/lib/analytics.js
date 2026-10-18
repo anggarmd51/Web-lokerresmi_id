@@ -32,6 +32,27 @@ export function trackEmployerInquiry(source) {
   return trackEvent('open_employer_inquiry', { source });
 }
 
+/**
+ * Track the employer placement option without sending inquiry form fields.
+ * Package options are deliberately descriptive only; pricing is handled by admin.
+ */
+export function trackFeaturedJobPackage(packageName, source = 'employer_inquiry') {
+  return trackEvent('select_featured_job_package', {
+    package_name: packageName,
+    source,
+  });
+}
+
+/**
+ * Track the handoff to WhatsApp without sending company, phone, or recruitment needs.
+ */
+export function trackEmployerInquiryHandoff(packageName, source = 'employer_inquiry') {
+  return trackEvent('employer_inquiry_handoff', {
+    package_name: packageName,
+    source,
+  });
+}
+
 export function trackCVPackage(packageName, source) {
   const params = {
     package_name: packageName,
