@@ -19,6 +19,7 @@ import {
   AlertTriangle,
 } from 'lucide-react';
 import { toast } from 'react-hot-toast';
+import { requestGemini } from '../lib/gemini';
 
 // Minimal sample PDF (base64) for instant 1-click test
 const SAMPLE_PDF_BASE64 =
@@ -42,16 +43,6 @@ const TONE_OPTIONS = [
     description: 'Fokus pada hasil (result-oriented), kepemimpinan, dan pencapaian target konkret.',
   },
 ];
-
-// Sanitizer helper for user inputs to prevent prompt injection and delimiter breakout
-const sanitizePromptInput = (text, maxLength = 2000) => {
-  if (!text || typeof text !== 'string') return '';
-  return text
-    .trim()
-    .replace(/```/g, '') // strip markdown code block fences
-    .replace(/[\u0000-\u001F\u007F-\u009F]/g, '') // strip control characters
-    .slice(0, maxLength);
-};
 
 // Helper to convert File to base64 using native FileReader with safety timeout guard & magic bytes verification
 const readFileAsBase64 = (file, timeoutMs = 10000) => {
@@ -112,23 +103,6 @@ const readFileAsBase64 = (file, timeoutMs = 10000) => {
   });
 };
 
-// Helper for fetch with AbortController timeout
-const fetchWithTimeout = async (url, options = {}, timeoutMs = 10000) => {
-  const controller = new AbortController();
-  const timer = setTimeout(() => {
-    controller.abort();
-  }, timeoutMs);
-
-  try {
-    const response = await fetch(url, {
-      ...options,
-      signal: controller.signal,
-    });
-    return response;
-  } finally {
-    clearTimeout(timer);
-  }
-};
 
 // Generate realistic simulated cover letter for offline/timeout fallback
 const generateSimulatedCoverLetter = (jobTitle, companyName, tone) => {
@@ -209,157 +183,14 @@ Hormat saya,
 [Email]`;
 };
 
-// Call Gemini API with PDF inlineData and 15s timeout
-const generateCoverLetterWithGemini = async (
-  base64Pdf,
-  jobTitle,
-  companyName,
-  jobDescription,
-  toneLabel
-) => {
-  const apiKey = import.meta.env.VITE_GEMINI_API_KEY || '';
-
-  if (!apiKey) {
-    console.info('VITE_GEMINI_API_KEY absent. Using fallback simulated cover letter.');
-    await new Promise((resolve) => setTimeout(resolve, 1000));
-    return {
-      text: generateSimulatedCoverLetter(jobTitle, companyName, toneLabel),
-      isFallback: true,
-    };
-  }
-
-  // Validate Base64 PDF
-  if (!base64Pdf || typeof base64Pdf !== 'string' || base64Pdf.trim().length === 0) {
-    throw new Error('Payload dokumen CV PDF kosong.');
-  }
-
-  const todayDateFormatted = new Date().toLocaleDateString('id-ID', {
-    day: 'numeric',
-    month: 'long',
-    year: 'numeric',
-  });
-
-  const cleanJobTitle = sanitizePromptInput(jobTitle, 100) || 'Posisi Terkait';
-  const cleanCompanyName = sanitizePromptInput(companyName, 100) || 'Perusahaan Target';
-  const cleanJobDescription = sanitizePromptInput(jobDescription, 1500) || 'Kualifikasi umum sesuai standar industri';
-  const validTone = TONE_OPTIONS.some((opt) => opt.label === toneLabel)
-    ? toneLabel
-    : TONE_OPTIONS[0].label;
-
-  const promptText = `Anda adalah konsultan karier profesional, HR recruitment specialist, dan copywriter surat lamaran kerja (Cover Letter) dari Lokerresmi.id.
-Tugas Anda adalah menulis surat lamaran kerja (Cover Letter) yang SANGAT PERSUASIF, RINGKAS, dan BERBOBOT dalam Bahasa Indonesia berdasarkan resume CV pelamar terlampir dan spesifikasi lowongan kerja dengan standar rekrutmen modern tahun 2026.
-
-DATA TARGET LOWONGAN:
-- Posisi yang Dilamar: ${cleanJobTitle}
-- Nama Perusahaan Target: ${cleanCompanyName}
-- Deskripsi / Kualifikasi Pekerjaan: ${cleanJobDescription}
-- Tone of Voice / Gaya Bahasa: ${validTone}
-- Tanggal Sekarang: ${todayDateFormatted}
-
-STRUKTUR OUTPUT WAJIB:
-${todayDateFormatted}
-Yth. Tim Rekrutmen / Manajer HRD
-${cleanCompanyName}
-di Tempat
-
-Dengan hormat,
-
-[Paragraf 1 - Pembuka Langsung: Buka langsung dengan posisi yang dilamar di ${companyName || 'perusahaan'}, ringkasan latar belakang profesional pelamar, serta proposisi nilai/keahlian inti yang langsung relevan. DILARANG menggunakan kalimat pembuka pasif/klise.]
-
-[Paragraf 2 - Bukti Kompetensi & Pengalaman: Paparkan pencapaian dan pengalaman kerja konkret dari CV pelamar yang paling sesuai dengan deskripsi pekerjaan. Gunakan kata kerja aksi aktif dan bukti faktual.]
-
-[Paragraf 3 - Keterampilan Teknis & Kesiapan Kerja: Soroti keahlian teknis/operasional, kemampuan pemecahan masalah, atau kesiapan mengadopsi alur kerja dan SOP perusahaan secara terstruktur dan teliti.]
-
-[Paragraf 4 - Penutup Profesional & Call to Action: Tegaskan antusiasme kontribusi profesional dan ajukan kesiapan untuk sesi wawancara atau diskusi lebih lanjut.]
-
-Hormat saya,
-
-[Nama Lengkap]
-[Nomor WhatsApp]
-[Email]
-
-ATURAN DAN LARANGAN KETAT:
-1. PENANGANAN TANGGAL: Selalu gunakan tanggal aktual: "${todayDateFormatted}". DILARANG MENGGUNAKAN TAHUN LAMPAU.
-2. PEMBUKA LANGSUNG & LUGAS: Paragraf pembuka harus langsung menyebutkan posisi yang dilamar, nama perusahaan, dan kualifikasi inti. DILARANG KERAS menggunakan frasa pembuka pasif/klise seperti "melalui surat ini saya bermaksud menyampaikan ketertarikan saya...", "dengan ini saya bermaksud mengajukan lamaran...", atau sejenisnya.
-3. LARANGAN KATA KLISE GENERIK: DILARANG menggunakan kata/frasa klise klise seperti "bertanggung jawab penuh", "pribadi yang disiplin, jujur, dan pembelajar cepat", "kecepatan menyusun", "pekerja keras tanpa lelah", atau klaim kosong tanpa bukti.
-4. BUKTI BERORIENTASI TINDAKAN (ACTION-ORIENTED EVIDENCE): Tuliskan pencapaian dan kapabilitas kandidat menggunakan kata kerja aksi aktif (misal: "berperan dalam mengelola...", "terbiasa bekerja secara terstruktur dan teliti", "mengembangkan solusi...", "mengoptimalkan efisiensi alur kerja...").
-5. KONTROL PANJANG & TATA LETAK: Batasi panjang surat agar ringkas antara 200–250 kata agar tepat muat dalam 1 halaman A4 saat diekspor ke PDF.
-6. PEMISAH PARAGRAF: Gunakan HANYA pemisah baris ganda (\\n\\n) antar paragraf. DILARANG membuat jeda baris kaku (hard line break) di tengah kalimat.
-7. DILARANG MENAMBAHKAN PLACEHOLDER TANDA TANGAN: Jangan sertakan teks seperti "(Tanda Tangan)" atau "(Signature)".
-8. FORMAT RESPON: Kembalikan HANYA teks surat lamaran kerja siap pakai tanpa kalimat pengantar basa-basi dari AI, tanpa ucapan selamat, dan tanpa blok pembungkus markdown seperti \`\`\`markdown atau \`\`\`.`;
-
-  const modelsToTry = [
-    { name: 'gemini-3.1-flash-lite', timeout: 8000 },
-    { name: 'gemini-3.8-flash', timeout: 6000 },
-  ];
-
-  for (const { name: modelName, timeout: modelTimeout } of modelsToTry) {
-    try {
-      const response = await fetchWithTimeout(
-        `https://generativelanguage.googleapis.com/v1beta/models/${modelName}:generateContent?key=${apiKey}`,
-        {
-          method: 'POST',
-          headers: {
-            'Content-Type': 'application/json',
-          },
-          body: JSON.stringify({
-            contents: [
-              {
-                parts: [
-                  { text: promptText },
-                  {
-                    inlineData: {
-                      mimeType: 'application/pdf',
-                      data: base64Pdf.trim(),
-                    },
-                  },
-                ],
-              },
-            ],
-            generationConfig: {
-              temperature: 0.3,
-            },
-          }),
-        },
-        modelTimeout
-      );
-
-      if (response && response.ok) {
-        const data = await response.json();
-        const candidateText = data?.candidates?.[0]?.content?.parts?.[0]?.text;
-        if (candidateText && candidateText.trim().length > 50) {
-          // Clean markdown wrappers if any
-          let cleanText = candidateText
-            .replace(/^```markdown/gi, '')
-            .replace(/^```text/gi, '')
-            .replace(/^```/g, '')
-            .replace(/```$/g, '')
-            .trim();
-
-          return {
-            text: cleanText,
-            isFallback: false,
-          };
-        }
-      } else {
-        console.warn(`Gemini call to ${modelName} returned status ${response?.status}`);
-      }
-    } catch (err) {
-      if (err.name === 'AbortError') {
-        console.warn(`Gemini call to ${modelName} timed out (${modelTimeout}ms).`);
-      } else {
-        console.warn(`Error with ${modelName}:`, err);
-      }
-    }
-  }
-
-  // Graceful fallback to realistic simulated letter
-  console.info('Activating fail-safe standby cover letter preview.');
-  return {
-    text: generateSimulatedCoverLetter(jobTitle, companyName, toneLabel),
-    isFallback: true,
-  };
-};
+const generateCoverLetterWithGemini = (base64Pdf, jobTitle, companyName, jobDescription, tone) => requestGemini({
+  type: 'cover-letter',
+  base64Pdf: base64Pdf.trim(),
+  jobDescription: jobDescription?.trim() || '',
+  jobTitle: jobTitle?.trim() || '',
+  companyName: companyName?.trim() || '',
+  tone,
+});
 
 export default function AICoverLetterModal({ isOpen, onClose, onOpenOrderModal, initialJob = null }) {
   const [jobTitle, setJobTitle] = useState('');
@@ -387,7 +218,7 @@ export default function AICoverLetterModal({ isOpen, onClose, onOpenOrderModal, 
 
   if (!isOpen) return null;
 
-  // File validation (accept only .pdf, max 5MB)
+  // File validation (accept only .pdf, max 3MB)
   const validateAndSetFile = (file) => {
     if (!file) return;
 
@@ -400,9 +231,9 @@ export default function AICoverLetterModal({ isOpen, onClose, onOpenOrderModal, 
       return;
     }
 
-    const maxSizeBytes = 5 * 1024 * 1024; // 5MB limit
+    const maxSizeBytes = 3 * 1024 * 1024; // batas JSON/base64 Vercel
     if (file.size > maxSizeBytes) {
-      toast.error('Ukuran file melebihi batas maksimal 5MB. Silakan gunakan file yang lebih ringkas.');
+      toast.error('Ukuran file melebihi batas maksimal 3MB. Silakan gunakan file yang lebih ringkas.');
       return;
     }
 
@@ -477,42 +308,17 @@ export default function AICoverLetterModal({ isOpen, onClose, onOpenOrderModal, 
     setGeneratedLetter('');
     setIsFallback(false);
 
-    let safetyTimer = null;
-
     try {
-      // 16-second safety timeout using Promise.race that resolves smoothly with fallback
-      const timeoutPromise = new Promise((resolve) => {
-        safetyTimer = setTimeout(() => {
-          console.warn('Safety timeout reached (16s). Returning simulated cover letter fallback.');
-          resolve({
-            text: generateSimulatedCoverLetter(jobTitle, companyName, tone),
-            isFallback: true,
-          });
-        }, 16000);
-      });
-
-      const generateTask = async () => {
-        let base64Data = '';
-        if (selectedFile._sampleBase64) {
-          base64Data = selectedFile._sampleBase64;
-        } else {
-          base64Data = await readFileAsBase64(selectedFile, 6000);
-        }
-
-        if (!base64Data || typeof base64Data !== 'string' || base64Data.trim().length === 0) {
-          throw new Error('Gagal mengekstrak data dari file PDF.');
-        }
-
-        return await generateCoverLetterWithGemini(
-          base64Data,
-          jobTitle,
-          companyName,
-          jobDesc,
-          tone
-        );
-      };
-
-      const result = await Promise.race([generateTask(), timeoutPromise]);
+      let base64Data = '';
+      if (selectedFile._sampleBase64) {
+        base64Data = selectedFile._sampleBase64;
+      } else {
+        base64Data = await readFileAsBase64(selectedFile, 10000);
+      }
+      if (!base64Data || typeof base64Data !== 'string' || base64Data.trim().length === 0) {
+        throw new Error('Gagal mengekstrak data dari file PDF.');
+      }
+      const result = await generateCoverLetterWithGemini(base64Data, jobTitle, companyName, jobDesc, tone);
 
       setGeneratedLetter(result.text);
       setIsFallback(result.isFallback);
@@ -532,9 +338,6 @@ export default function AICoverLetterModal({ isOpen, onClose, onOpenOrderModal, 
       setIsFallback(true);
       toast.error('Gagal menganalisis CV atau koneksi terputus. Menggunakan draf standar...');
     } finally {
-      if (safetyTimer) {
-        clearTimeout(safetyTimer);
-      }
       // CRITICAL: GUARANTEED LOADING STATE RESET - BUTTON NEVER STUCK
       setIsGenerating(false);
     }
@@ -755,7 +558,7 @@ export default function AICoverLetterModal({ isOpen, onClose, onOpenOrderModal, 
                       Klik atau seret & jatuhkan file PDF CV Anda ke sini
                     </p>
                     <p className="text-[11px] text-slate-400 mt-0.5">
-                      Hanya format <strong className="text-teal font-semibold">.PDF</strong> (Maksimal 5MB)
+                      Hanya format <strong className="text-teal font-semibold">.PDF</strong> (Maksimal 3MB)
                     </p>
                   </div>
                 </div>

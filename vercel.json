@@ -1,4 +1,7 @@
 {
+  "functions": {
+    "api/gemini.js": { "maxDuration": 30 }
+  },
   "routes": [
     { "src": "/sitemap\\.xml", "dest": "/api/sitemap.js" },
     { "src": "/api/(.*)", "dest": "/api/$1" },

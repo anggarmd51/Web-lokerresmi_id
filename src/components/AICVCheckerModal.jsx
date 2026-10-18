@@ -16,6 +16,7 @@ import {
   FileCheck,
 } from 'lucide-react';
 import { toast } from 'react-hot-toast';
+import { requestGemini } from '../lib/gemini';
 
 // Client-side intelligent simulator fallback when API Key is absent, network drops, or rate limit occurs
 const simulateAnalysis = (fileName = 'CV_Dokumen.pdf', jobDescription = '', isFallback = true) => {
@@ -67,16 +68,6 @@ const simulateAnalysis = (fileName = 'CV_Dokumen.pdf', jobDescription = '', isFa
 // Minimal sample PDF (base64) so user can test the ATS PDF analyzer instantly with 1-click
 const SAMPLE_PDF_BASE64 =
   'JVBERi0xLjcKCjEgMCBvYmoKPDwKL1R5cGUgL0NhdGFsb2cKL1BhZ2VzIDIgMCBSCj4+CmVuZG9iagoKMiAwIG9iago8PAovVHlwZSAvUGFnZXMKL0tpZHMgWzMgMCBSXQovQ291bnQgMQo+PgplbmRvYmoKCjMgMCBvYmoKPDwKL1R5cGUgL1BhZ2UKL1BhcmVudCAyIDAgUgovTWVkaWFCb3ggWzAgMCA2MTIgNzkyXQovQ29udGVudHMgNCAwIFIKPj4KZW5kb2JqCgo0IDAgb2JqCjw8Ci9MZW5ndGggMTg5Cj4+CnN0cmVhbQpCVAovRjEgMTIgVGYKMTAwIDcwMCBUZAooQU5ESCBQUkFUQU1BIC0gRnJvbnRlbmQgRGV2ZWxvcGVyKSBUagowIC0yMCBUZAooRW1haWw6IGFuZGkucHJhdGFtYUBnbWFpbC5jb20gfCBXaGF0c0FwcDogMDg1MTc5OTA1MDE5KSBUagowIC0yMCBUZAooUGVuZ2FsYW1hbjogRnJvbnRlbmQgRW5naW5lZXIgc2VsYW1hIDIgdGFodW4gbWVuZ2d1bmFrYW4gUmVhY3QsIFRhaWx3aW5kLCBzb3VyY2UgY29udHJvbCBHaXQpIFRqCjAgLTIwIFRkCihQZW5kaWRpa2FuOiBTMVRla25payBJbmZvcm1hdGlrYSBJUEsgMy42MCkgVGoKRVQKZW5kc3RyZWFtCmVuZG9iagoKeHJlZgowIDUKMDAwMDAwMDAwMCA2NTUzNSBmIAowMDAwMDAwMDEwIDAwMDAwIG4gCjAwMDAwMDAwNjAgMDAwMDAgbiAKMDAwMDAwMDExOSAwMDAwMCBuIAowMDAwMDAwMjE3IDAwMDAwIG4gCnRyYWlsZXIKPDwKL1NpemUgNQovUm9vdCAxIDAgUgo+PgpzdGFydHhyZWYKMzUwCiUlRU9GCg==';
-
-// Sanitizer helper for user input to prevent prompt injection and delimiter breakout
-const sanitizePromptInput = (text, maxLength = 2000) => {
-  if (!text || typeof text !== 'string') return '';
-  return text
-    .trim()
-    .replace(/```/g, '') // strip markdown code block fences
-    .replace(/[\u0000-\u001F\u007F-\u009F]/g, '') // strip control chars
-    .slice(0, maxLength);
-};
 
 // Helper to convert File to base64 using native FileReader with safety timeout guard & magic bytes verification
 const readFileAsBase64 = (file, timeoutMs = 10000) => {
@@ -138,136 +129,12 @@ const readFileAsBase64 = (file, timeoutMs = 10000) => {
   });
 };
 
-// Helper for fetch with AbortController 15-second timeout
-const fetchWithTimeout = async (url, options = {}, timeoutMs = 15000) => {
-  const controller = new AbortController();
-  const timer = setTimeout(() => {
-    controller.abort();
-  }, timeoutMs);
 
-  try {
-    const response = await fetch(url, {
-      ...options,
-      signal: controller.signal,
-    });
-    return response;
-  } finally {
-    clearTimeout(timer);
-  }
-};
-
-// API call to Gemini with PDF inlineData & fail-safe error handling
-const analyzePdfWithGemini = async (base64Pdf, jobDescription, fileName) => {
-  const apiKey = import.meta.env.VITE_GEMINI_API_KEY || '';
-
-  // Fail-safe check: Missing API key -> Fallback mock result
-  if (!apiKey) {
-    console.info('VITE_GEMINI_API_KEY is not defined. Using fallback standby analysis.');
-    await new Promise((resolve) => setTimeout(resolve, 1000));
-    return simulateAnalysis(fileName, jobDescription, true);
-  }
-
-  // Validation: Check base64 existence
-  if (!base64Pdf || typeof base64Pdf !== 'string' || base64Pdf.trim().length === 0) {
-    throw new Error('Payload Base64 PDF tidak valid.');
-  }
-
-  const inlineData = {
-    mimeType: 'application/pdf',
-    data: base64Pdf.trim(),
-  };
-
-  // Validate that inlineData.data exists and is non-empty before calling API
-  if (!inlineData.data) {
-    throw new Error('inlineData.data kosong.');
-  }
-
-  const cleanJobDescription = sanitizePromptInput(jobDescription, 1500);
-
-  const promptText = `Act as an expert ATS (Applicant Tracking System) auditor and senior career consultant from Lokerresmi.id.
-Analyze the attached PDF CV against this job description: ${cleanJobDescription ? JSON.stringify(cleanJobDescription) : 'General market role'}.
-Output JSON strictly in this format:
-{
-  "score": number,
-  "summary": "executive summary in Indonesian (2-3 sentences)",
-  "strengths": ["specific strength point 1 in Indonesian", "specific strength point 2 in Indonesian"],
-  "weaknesses": ["specific weakness point 1 in Indonesian", "specific weakness point 2 in Indonesian"],
-  "missing_keywords": ["industry skill / missing keyword 1", "industry skill / missing keyword 2"],
-  "recommendations": ["actionable improvement recommendation 1 in Indonesian", "actionable improvement recommendation 2 in Indonesian"]
-}`;
-
-  // Multi-model failover: try gemini-3.1-flash-lite, then gemini-3.8-flash
-  const modelsToTry = ['gemini-3.1-flash-lite', 'gemini-3.8-flash'];
-
-  for (const modelName of modelsToTry) {
-    try {
-      const response = await fetchWithTimeout(
-        `https://generativelanguage.googleapis.com/v1beta/models/${modelName}:generateContent?key=${apiKey}`,
-        {
-          method: 'POST',
-          headers: {
-            'Content-Type': 'application/json',
-          },
-          body: JSON.stringify({
-            contents: [
-              {
-                parts: [
-                  { text: promptText },
-                  { inlineData },
-                ],
-              },
-            ],
-            generationConfig: {
-              responseMimeType: 'application/json',
-              temperature: 0.2,
-            },
-          }),
-        },
-        15000 // 15-second timeout guard
-      );
-
-      if (response && response.ok) {
-        const data = await response.json();
-        const candidateText = data?.candidates?.[0]?.content?.parts?.[0]?.text;
-        if (candidateText) {
-          // Robust JSON cleaning: strip markdown code blocks and slice outermost braces
-          let cleanText = candidateText.replace(/```json/gi, '').replace(/```/g, '').trim();
-          const firstBrace = cleanText.indexOf('{');
-          const lastBrace = cleanText.lastIndexOf('}');
-          if (firstBrace !== -1 && lastBrace !== -1 && lastBrace > firstBrace) {
-            cleanText = cleanText.substring(firstBrace, lastBrace + 1);
-          }
-
-          const parsed = JSON.parse(cleanText);
-
-          return {
-            score: typeof parsed.score === 'number' ? Math.min(100, Math.max(0, Math.round(parsed.score))) : 75,
-            summary: parsed.summary || 'Analisis dokumen CV ATS berhasil diselesaikan.',
-            strengths: Array.isArray(parsed.strengths) ? parsed.strengths : [],
-            weaknesses: Array.isArray(parsed.weaknesses) ? parsed.weaknesses : [],
-            missing_keywords: Array.isArray(parsed.missing_keywords) ? parsed.missing_keywords : [],
-            recommendations: Array.isArray(parsed.recommendations) ? parsed.recommendations : [],
-            isFallback: false,
-          };
-        }
-      } else {
-        const status = response?.status;
-        console.warn(`Gemini API call to ${modelName} failed with status: ${status}`);
-        // If 400 Bad Request, 429 Rate Limit, 503 Unavailable -> continue to fallback
-      }
-    } catch (err) {
-      if (err.name === 'AbortError') {
-        console.warn(`Gemini API call to ${modelName} timed out (15s limit reached).`);
-      } else {
-        console.warn(`Error during Gemini API call to ${modelName}:`, err);
-      }
-    }
-  }
-
-  // Graceful fallback to client-side simulated analyzer on error / timeout
-  console.info('Activating fail-safe standby analysis for PDF CV.');
-  return simulateAnalysis(fileName, jobDescription, true);
-};
+const analyzePdfWithGemini = (base64Pdf, jobDescription) => requestGemini({
+  type: 'cv-analysis',
+  base64Pdf: base64Pdf.trim(),
+  jobDescription: jobDescription?.trim() || '',
+});
 
 export default function AICVCheckerModal({ isOpen, onClose, onOpenOrderModal }) {
   const [selectedFile, setSelectedFile] = useState(null);
@@ -280,7 +147,7 @@ export default function AICVCheckerModal({ isOpen, onClose, onOpenOrderModal }) 
 
   if (!isOpen) return null;
 
-  // File validation (accept only .pdf, max 5MB)
+  // File validation (accept only .pdf, max 3MB)
   const validateAndSetFile = (file) => {
     if (!file) return;
 
@@ -293,9 +160,9 @@ export default function AICVCheckerModal({ isOpen, onClose, onOpenOrderModal }) 
       return;
     }
 
-    const maxSizeBytes = 5 * 1024 * 1024; // 5MB limit
+    const maxSizeBytes = 3 * 1024 * 1024; // batas JSON/base64 Vercel
     if (file.size > maxSizeBytes) {
-      toast.error('Ukuran file melebihi batas maksimal 5MB. Silakan gunakan file yang lebih ringkas.');
+      toast.error('Ukuran file melebihi batas maksimal 3MB. Silakan gunakan file yang lebih ringkas.');
       return;
     }
 
@@ -376,7 +243,7 @@ export default function AICVCheckerModal({ isOpen, onClose, onOpenOrderModal }) 
       }
 
       const trimmedJobDesc = jobDesc ? jobDesc.trim() : '';
-      const data = await analyzePdfWithGemini(base64Data, trimmedJobDesc, selectedFile.name);
+      const data = await analyzePdfWithGemini(base64Data, trimmedJobDesc);
       setResult(data);
 
       if (data?.isFallback) {
@@ -524,7 +391,7 @@ export default function AICVCheckerModal({ isOpen, onClose, onOpenOrderModal }) 
                       Klik untuk pilih file, atau seret & jatuhkan dokumen PDF di sini
                     </p>
                     <p className="text-[11px] text-slate-400 dark:text-slate-400 mt-1">
-                      Hanya mendukung format <strong className="text-teal font-semibold">.PDF</strong> (Maksimal ukuran 5MB)
+                      Hanya mendukung format <strong className="text-teal font-semibold">.PDF</strong> (Maksimal ukuran 3MB)
                     </p>
                   </div>
                   <button
