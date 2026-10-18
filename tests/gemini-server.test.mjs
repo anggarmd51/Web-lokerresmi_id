@@ -125,8 +125,8 @@ test('handler returns cover-letter success schema', async () => {
 
 test('handler fails over from 429 and 502 to the configured fallback model', async () => {
   const seen = [];
-  const r = await invoke({ type: 'cv-analysis', cvText: 'x' }, { env: { GEMINI_MODEL: 'first', GEMINI_FALLBACK_MODEL: 'second' }, fetchImpl: async (url) => { seen.push(url); return response(seen.length === 1 ? 429 : 200, seen.length === 1 ? {} : { candidates: [{ content: { parts: [{ text: JSON.stringify(analysis) }] } }] }); } });
-  assert.equal(r.statusCode, 200); assert.match(seen[0], /first/); assert.match(seen[1], /second/);
+  const r = await invoke({ type: 'cv-analysis', cvText: 'x' }, { env: { GEMINI_MODEL: 'first', GEMINI_FALLBACK_MODEL: 'second' }, fetchImpl: async (url) => { seen.push(url); return response(seen.length <= 2 ? 429 : 200, seen.length <= 2 ? {} : { candidates: [{ content: { parts: [{ text: JSON.stringify(analysis) }] } }] }); } });
+  assert.equal(r.statusCode, 200); assert.match(seen[0], /first/); assert.match(seen[1], /first/); assert.match(seen[2], /second/);
   const r2 = await invoke({ type: 'cv-analysis', cvText: 'x' }, { fetchImpl: async () => response(502, {}) });
   assert.equal(r2.statusCode, 502); assert.equal(r2.json().error.code, 'UPSTREAM_ERROR');
 });
@@ -148,7 +148,7 @@ test('handler caps total timeout across fallback attempts', async () => {
 
 test('handler maps invalid upstream JSON and missing key to safe errors', async () => {
   const bad = await invoke({ type: 'cv-analysis', cvText: 'x' }, { fetchImpl: async () => response(200, {}, { json: false }) });
-  assert.equal(bad.statusCode, 502); assert.equal(bad.json().error.code, 'UPSTREAM_ERROR');
+  assert.equal(bad.statusCode, 502); assert.equal(bad.json().error.code, 'UPSTREAM_INVALID_RESPONSE');
   const missing = await invoke({ type: 'cv-analysis', cvText: 'x' }, { env: { GEMINI_API_KEY: '' } });
   assert.equal(missing.statusCode, 503); assert.equal(missing.json().error.code, 'SERVICE_UNAVAILABLE');
 });

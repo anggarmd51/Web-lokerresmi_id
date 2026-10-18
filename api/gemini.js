@@ -5,10 +5,11 @@ export const MAX_BODY_BYTES = 4_300_000;
 const DEFAULT_MODELS = ['gemini-3.1-flash-lite', 'gemini-3.8-flash'];
 
 class ServiceError extends Error {
-  constructor(status, code, message) {
+  constructor(status, code, message, options = {}) {
     super(message);
     this.status = status;
     this.code = code;
+    Object.assign(this, options);
   }
 }
 
@@ -72,7 +73,19 @@ Gunakan gaya bahasa yang dipilih. Hindari klaim kosong seperti 'pekerja keras', 
     generationConfig: {
       temperature: body.type === 'cv-analysis' ? 0.2 : 0.3,
       maxOutputTokens: 4096,
-      ...(body.type === 'cv-analysis' ? { responseMimeType: 'application/json' } : {}),
+      ...(body.type === 'cv-analysis' ? {
+        responseMimeType: 'application/json',
+        responseSchema: {
+          type: 'OBJECT',
+          properties: {
+            score: { type: 'INTEGER' },
+            summary: { type: 'STRING' },
+            ...Object.fromEntries(['strengths', 'weaknesses', 'missing_keywords', 'recommendations']
+              .map((key) => [key, { type: 'ARRAY', items: { type: 'STRING' } }])),
+          },
+          required: ['score', 'summary', 'strengths', 'weaknesses', 'missing_keywords', 'recommendations'],
+        },
+      } : {}),
     },
   };
 }
@@ -109,15 +122,38 @@ function send(res, status, body) {
   res.end(JSON.stringify(body));
 }
 
-export function createHandler({ fetchImpl = globalThis.fetch, env = process.env, attemptTimeoutMs = 25000, totalTimeoutMs = 50000 } = {}) {
+function retryAfterMs(headers) {
+  const value = (headers?.get?.('retry-after') || headers?.get?.('Retry-After'));
+  if (!value) return 100;
+  const seconds = Number(value);
+  if (Number.isFinite(seconds) && seconds >= 0) return Math.ceil(seconds * 1000);
+  const date = Date.parse(value);
+  return Number.isFinite(date) ? Math.max(0, date - Date.now()) : 100;
+}
+
+function upstreamError(status, headers) {
+  if (status === 400 || status === 422) return new ServiceError(422, 'UPSTREAM_INVALID_REQUEST', 'Dokumen atau permintaan tidak dapat diproses oleh layanan AI. Periksa PDF lalu coba kembali.');
+  if (status === 401 || status === 403) return new ServiceError(503, 'UPSTREAM_AUTH_ERROR', 'Akses layanan AI belum tersedia. Administrator perlu memeriksa kunci dan izin proyek.');
+  if (status === 404) return new ServiceError(502, 'MODEL_UNAVAILABLE', 'Model AI tidak tersedia.', { retryable: true });
+  if (status === 429) return new ServiceError(429, 'RATE_LIMITED', 'Layanan AI sedang sibuk. Silakan coba lagi nanti.', { retryable: true, sameModelRetry: true, retryAfterMs: retryAfterMs(headers) });
+  if (status === 413) return new ServiceError(413, 'PAYLOAD_TOO_LARGE', 'Dokumen terlalu besar untuk diproses.');
+  return new ServiceError(502, 'UPSTREAM_ERROR', 'Layanan AI belum dapat memproses permintaan.', { retryable: status === 408 || status >= 500, sameModelRetry: true });
+}
+
+function chooseError(current, next) {
+  // Do not obscure rate limits/timeouts with a secondary unavailable model.
+  const rank = { RATE_LIMITED: 5, UPSTREAM_TIMEOUT: 4, UPSTREAM_INVALID_RESPONSE: 3, UPSTREAM_ERROR: 2, MODEL_UNAVAILABLE: 1 };
+  return !current || (rank[next.code] || 0) >= (rank[current.code] || 0) ? next : current;
+}
+
+export function createHandler({ fetchImpl = globalThis.fetch, env = process.env, attemptTimeoutMs = 25000, totalTimeoutMs = 50000, sleepImpl = (ms) => new Promise((resolve) => setTimeout(resolve, ms)) } = {}) {
   return async function handler(req, res) {
     try {
       if (req.method !== 'POST') {
         res.setHeader('Allow', 'POST');
         throw new ServiceError(405, 'METHOD_NOT_ALLOWED', 'Gunakan metode POST.');
       }
-      // This is a public feature, not an authenticated API. Block browser cross-site calls;
-      // production rate limiting must be configured at the edge, not in instance memory.
+      // This public feature requires edge rate limiting for abuse prevention.
       const origin = req.headers?.origin;
       let foreignOrigin = false;
       if (origin) {
@@ -140,7 +176,7 @@ export function createHandler({ fetchImpl = globalThis.fetch, env = process.env,
         throw new ServiceError(413, 'PAYLOAD_TOO_LARGE', 'Payload terlalu besar.');
       }
       const payload = buildRequest(body);
-      const apiKey = env.GEMINI_API_KEY;
+      const apiKey = env.GEMINI_API_KEY?.trim();
       if (!apiKey) throw new ServiceError(503, 'SERVICE_UNAVAILABLE', 'Layanan AI belum dikonfigurasi.');
       const models = [...new Set([env.GEMINI_MODEL || DEFAULT_MODELS[0], env.GEMINI_FALLBACK_MODEL || DEFAULT_MODELS[1]])];
       if (!models.every((model) => /^[a-zA-Z0-9._-]{1,100}$/.test(model))) {
@@ -148,54 +184,90 @@ export function createHandler({ fetchImpl = globalThis.fetch, env = process.env,
       }
       const deadline = Date.now() + totalTimeoutMs;
       let lastError;
+      let attempts = 0;
       for (const model of models) {
-        const remaining = deadline - Date.now();
-        if (remaining <= 0) {
-          lastError = new ServiceError(504, 'UPSTREAM_TIMEOUT', 'Layanan AI melewati batas waktu.');
-          break;
+        for (let modelAttempt = 0; modelAttempt < 2 && attempts < 3; modelAttempt++) {
+          const remaining = deadline - Date.now();
+          if (remaining <= 0) {
+            lastError = chooseError(lastError, new ServiceError(504, 'UPSTREAM_TIMEOUT', 'Layanan AI melewati batas waktu.'));
+            break;
+          }
+          attempts++;
+          const controller = new AbortController();
+          let timer;
+          let failure;
+          try {
+            const timeout = new Promise((_, reject) => {
+              timer = setTimeout(() => {
+                controller.abort();
+                reject(new ServiceError(504, 'UPSTREAM_TIMEOUT', 'Layanan AI melewati batas waktu.', { retryable: true }));
+              }, Math.min(attemptTimeoutMs, remaining));
+            });
+            const result = await Promise.race([
+              (async () => {
+                const upstream = await fetchImpl(`https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent`, {
+                  method: 'POST',
+                  headers: { 'Content-Type': 'application/json', 'x-goog-api-key': apiKey },
+                  body: JSON.stringify(payload),
+                  signal: controller.signal,
+                });
+                if (!upstream.ok) {
+                  console.warn('Gemini upstream request failed', { type: body.type, model, status: upstream.status });
+                  throw upstreamError(upstream.status, upstream.headers);
+                }
+                let response;
+                try { response = await upstream.json(); }
+                catch (error) {
+                  if (controller.signal.aborted) throw error;
+                  throw new ServiceError(502, 'UPSTREAM_INVALID_RESPONSE', 'Respons layanan AI tidak valid. Silakan coba lagi.', { retryable: true });
+                }
+                if (response?.promptFeedback?.blockReason || ['SAFETY', 'PROHIBITED_CONTENT', 'RECITATION'].includes(response?.candidates?.[0]?.finishReason)) {
+                  throw new ServiceError(422, 'DOCUMENT_REJECTED', 'Dokumen tidak dapat dianalisis. Gunakan CV yang dapat dibaca dan sesuai kebijakan layanan.');
+                }
+                try { return parseResult(body.type, response); }
+                catch {
+                  throw new ServiceError(502, 'UPSTREAM_INVALID_RESPONSE', 'Respons layanan AI tidak lengkap atau tidak valid. Silakan coba lagi.', { retryable: true });
+                }
+              })(),
+              timeout,
+            ]);
+            send(res, 200, { ok: true, data: result });
+            return;
+          } catch (error) {
+            failure = error instanceof ServiceError ? error : new ServiceError(502, 'UPSTREAM_ERROR', 'Koneksi layanan AI terputus. Silakan coba kembali.', { retryable: true, sameModelRetry: true });
+            if (!failure.retryable) throw failure;
+            lastError = chooseError(lastError, failure);
+          } finally {
+            clearTimeout(timer);
+            controller.abort();
+          }
+          const delay = failure.retryAfterMs ?? 100;
+          if (failure.code === 'RATE_LIMITED' && (delay > 2000 || delay >= deadline - Date.now())) {
+            throw failure; // Never retry before the provider's requested cooldown.
+          }
+          const retrySame = failure.sameModelRetry && modelAttempt === 0 && attempts < 3;
+          if (failure.code === 'RATE_LIMITED' && attempts < 3) {
+            await sleepImpl(Math.max(100, delay));
+          } else if (retrySame && delay < deadline - Date.now()) {
+            await sleepImpl(delay);
+          }
+          if (!retrySame) break;
         }
-        const controller = new AbortController();
-        let timer;
-        try {
-          // Race covers connection AND response-body consumption, even if a transport
-          // ignores abort. The deadline remains below Vercel's configured duration.
-          const timeout = new Promise((_, reject) => {
-            timer = setTimeout(() => {
-              controller.abort();
-              reject(new ServiceError(504, 'UPSTREAM_TIMEOUT', 'Layanan AI melewati batas waktu.'));
-            }, Math.min(attemptTimeoutMs, remaining));
-          });
-          const result = await Promise.race([
-            (async () => {
-              const upstream = await fetchImpl(`https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent`, {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json', 'x-goog-api-key': apiKey },
-                body: JSON.stringify(payload),
-                signal: controller.signal,
-              });
-              if (!upstream.ok) {
-                // Status-only diagnostics: never log response bodies or credentials.
-                console.warn('Gemini upstream request failed', { type: body.type, model, status: upstream.status });
-                if (upstream.status === 429) throw new ServiceError(429, 'RATE_LIMITED', 'Layanan AI sedang sibuk. Silakan coba lagi nanti.');
-                throw new ServiceError(502, 'UPSTREAM_ERROR', 'Layanan AI belum dapat memproses permintaan.');
-              }
-              return parseResult(body.type, await upstream.json());
-            })(),
-            timeout,
-          ]);
-          send(res, 200, { ok: true, data: result });
-          return;
-        } catch (error) {
-          lastError = error instanceof ServiceError ? error : new ServiceError(502, 'UPSTREAM_ERROR', 'Respons layanan AI tidak valid atau tidak tersedia.');
-        } finally {
-          clearTimeout(timer);
-        }
+        if (attempts >= 3 || Date.now() >= deadline) break;
       }
       throw lastError || new ServiceError(502, 'UPSTREAM_ERROR', 'Layanan AI tidak tersedia.');
     } catch (error) {
       const safe = error instanceof ServiceError ? error : new ServiceError(500, 'INTERNAL_ERROR', 'Permintaan AI tidak dapat diproses.');
-      // Never return/log provider errors, document contents, or credentials.
-      send(res, safe.status, { ok: false, error: { code: safe.code, message: safe.message } });
+      if (safe.code === 'RATE_LIMITED') res.setHeader('Retry-After', String(Math.max(1, Math.ceil((safe.retryAfterMs ?? 1000) / 1000))));
+      // Only safe metadata leaves the function; never return provider bodies or CVs.
+      send(res, safe.status, {
+        ok: false,
+        error: {
+          code: safe.code,
+          message: safe.message,
+          ...(safe.code === 'RATE_LIMITED' ? { retryAfterMs: safe.retryAfterMs ?? 1000 } : {}),
+        },
+      });
     }
   };
 }
