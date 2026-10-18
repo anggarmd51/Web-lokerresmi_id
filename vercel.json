@@ -1,6 +1,6 @@
 {
   "functions": {
-    "api/gemini.js": { "maxDuration": 30 }
+    "api/gemini.js": { "maxDuration": 60 }
   },
   "routes": [
     { "src": "/sitemap\\.xml", "dest": "/api/sitemap.js" },

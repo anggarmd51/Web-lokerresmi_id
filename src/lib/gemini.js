@@ -1,4 +1,4 @@
-const DEFAULT_TIMEOUT_MS = 27_000;
+const DEFAULT_TIMEOUT_MS = 55_000;
 
 /**
  * Call the same-origin Gemini endpoint. The timeout covers headers and the

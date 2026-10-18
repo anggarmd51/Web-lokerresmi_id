@@ -1,5 +1,5 @@
 // Only this serverless module may access Gemini credentials.
-export const config = { maxDuration: 30 };
+export const config = { maxDuration: 60 };
 export const MAX_PDF_BYTES = 3 * 1024 * 1024;
 export const MAX_BODY_BYTES = 4_300_000;
 const DEFAULT_MODELS = ['gemini-3.1-flash-lite', 'gemini-3.8-flash'];
@@ -109,7 +109,7 @@ function send(res, status, body) {
   res.end(JSON.stringify(body));
 }
 
-export function createHandler({ fetchImpl = globalThis.fetch, env = process.env, attemptTimeoutMs = 12000, totalTimeoutMs = 24000 } = {}) {
+export function createHandler({ fetchImpl = globalThis.fetch, env = process.env, attemptTimeoutMs = 25000, totalTimeoutMs = 50000 } = {}) {
   return async function handler(req, res) {
     try {
       if (req.method !== 'POST') {
@@ -170,7 +170,13 @@ export function createHandler({ fetchImpl = globalThis.fetch, env = process.env,
               const upstream = await fetchImpl(`https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent`, {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json', 'x-goog-api-key': apiKey },
-                body: JSON.stringify(payload),
+                body: JSON.stringify({
+                  ...payload,
+                  generationConfig: {
+                    ...payload.generationConfig,
+                    ...(model.startsWith('gemini-3') ? { thinkingConfig: { thinkingLevel: model.includes('flash-lite') ? 'minimal' : 'low' } } : {}),
+                  },
+                }),
                 signal: controller.signal,
               });
               if (!upstream.ok) {
