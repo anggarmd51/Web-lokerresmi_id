@@ -1,4 +1,5 @@
 import { SITE_URL, jobPath } from '../src/lib/seo.js';
+import { LANDING_PAGES, filterJobsForLanding } from '../src/lib/landingPages.js';
 const PAGE_SIZE = 1000;
 // One sitemap supports at most 50,000 URLs, including the homepage.
 const MAX_PAGES = 50;
@@ -35,6 +36,9 @@ function renderSitemap(jobs) {
     if (!job || job.id === null || job.id === undefined) continue;
     urls.push(sitemapUrl(jobPath(job.id), validLastmod(job.created_at)));
   }
+  for (const landing of Object.values(LANDING_PAGES)) {
+    if (filterJobsForLanding(jobs, landing).length) urls.push(sitemapUrl(landing.path));
+  }
   return `<?xml version="1.0" encoding="UTF-8"?>\n<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">\n${urls.join('\n')}\n</urlset>\n`;
 }
 
@@ -44,7 +48,7 @@ function errorSitemap() {
 
 async function fetchActiveJobs(fetchImpl, supabaseUrl, anonKey) {
   const endpoint = new URL('/rest/v1/jobs', `${supabaseUrl.replace(/\/+$/, '')}/`);
-  endpoint.searchParams.set('select', 'id,created_at,status');
+  endpoint.searchParams.set('select', 'id,created_at,status,location,category,title,desc,requirements');
   endpoint.searchParams.set('status', 'eq.Aktif');
   endpoint.searchParams.set('order', 'id.asc');
   const jobs = [];

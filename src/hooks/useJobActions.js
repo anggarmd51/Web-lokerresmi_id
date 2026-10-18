@@ -7,182 +7,102 @@ const isRlsError = (error) => {
   return error?.code === '42501' || message.includes('row-level security') || message.includes('permission denied for table');
 };
 
+const showActionError = (error, genericMessage, rlsMessage) => {
+  toast.error(isRlsError(error) ? rlsMessage : genericMessage);
+};
+
 export default function useJobActions({ setJobs }) {
   const updateLocalJobs = (updater) => {
-    setJobs((prevJobs) => {
-      const nextJobs = typeof updater === 'function' ? updater(prevJobs) : updater;
-      return nextJobs;
-    });
+    setJobs((prevJobs) => typeof updater === 'function' ? updater(prevJobs) : updater);
   };
 
   const createJob = async (newJob) => {
+    if (!newJob || typeof newJob !== 'object') {
+      toast.error('Data lowongan tidak valid.');
+      return null;
+    }
     try {
-      const payload = {
-        ...newJob,
-        created_at: newJob.created_at || new Date().toISOString(),
-        status: 'Menunggu Persetujuan',
-        applicantsCount: Number(newJob.applicantsCount || 0),
-        featured: Boolean(newJob.featured),
-      };
-
-      let insertedJob = payload;
-
-      try {
-        const { data, error } = await supabase.from('jobs').insert([payload]).select('*').single();
-
-        if (error) {
-          throw error;
-        }
-
-        insertedJob = data || payload;
-      } catch (error) {
-        const fallbackId = Date.now();
-        insertedJob = {
-          ...payload,
-          id: fallbackId,
-          created_at: new Date().toISOString(),
-        };
-
-        if (isRlsError(error)) {
-          toast.error('Izin insert dibatasi oleh policy Supabase. Pastikan admin sudah login dan policy INSERT untuk tabel jobs diizinkan.', { duration: 5000 });
-        } else {
-          toast.error(`Lowongan disimpan lokal sementara: ${error?.message || 'Gagal mengakses Supabase'}`, { duration: 5000 });
-        }
-      }
-
-      // Masukkan ke state agar langsung tampil di Manajemen Loker Admin
-      updateLocalJobs((prevJobs) => sortJobsByFeatured([insertedJob, ...prevJobs]));
+      const { data, error } = await supabase.from('jobs').insert([{ ...newJob }]).select('*').single();
+      if (error) throw error;
+      if (!data) throw new Error('Supabase tidak mengembalikan data lowongan.');
+      updateLocalJobs((prevJobs) => sortJobsByFeatured([data, ...prevJobs]));
       toast.success('Lowongan berhasil dikirim dan menunggu persetujuan admin.');
-      return insertedJob;
-    } catch {
+      return data;
+    } catch (error) {
+      showActionError(error, `Gagal menyimpan lowongan: ${error?.message || 'Gagal mengakses Supabase'}`, 'Izin insert dibatasi oleh policy Supabase. Pastikan admin sudah login dan policy INSERT untuk tabel jobs diizinkan.');
       return null;
     }
   };
 
   const updateJob = async (updatedJob) => {
+    if (!updatedJob || updatedJob.id == null) {
+      toast.error('Data lowongan tidak valid.');
+      return false;
+    }
     try {
       const safePayload = { ...updatedJob };
       delete safePayload.id;
-
-      const { error } = await supabase
-        .from('jobs')
-        .update(safePayload)
-        .eq('id', updatedJob.id);
-
+      const { data, error } = await supabase.from('jobs').update(safePayload).eq('id', updatedJob.id).select('*').single();
       if (error) throw error;
-
-      updateLocalJobs((prevJobs) =>
-        sortJobsByFeatured(
-          prevJobs.map((job) => (job.id === updatedJob.id ? updatedJob : job))
-        )
-      );
-
+      if (!data) throw new Error('Lowongan tidak ditemukan atau tidak berubah.');
+      updateLocalJobs((prevJobs) => sortJobsByFeatured(prevJobs.map((job) => job.id === data.id ? data : job)));
       return true;
     } catch (error) {
-      if (isRlsError(error)) {
-        toast.error('Akses UPDATE dibatasi oleh RLS Supabase. Pastikan akun admin terautentikasi dan policy UPDATE sudah diizinkan.');
-      }
-      updateLocalJobs((prevJobs) =>
-        sortJobsByFeatured(
-          prevJobs.map((job) => (job.id === updatedJob.id ? updatedJob : job))
-        )
-      );
+      showActionError(error, `Gagal memperbarui lowongan: ${error?.message || 'data tidak berubah.'}`, 'Akses UPDATE dibatasi oleh RLS Supabase. Pastikan akun admin terautentikasi dan policy UPDATE sudah diizinkan.');
       return false;
     }
   };
 
   const updateJobStatus = async (id, newStatus) => {
+    if (id == null || !newStatus) {
+      toast.error('Status lowongan tidak valid.');
+      return false;
+    }
     try {
-      const { error } = await supabase
-        .from('jobs')
-        .update({ status: newStatus })
-        .eq('id', id);
-
+      const { data, error } = await supabase.from('jobs').update({ status: newStatus }).eq('id', id).select('id').single();
       if (error) throw error;
-
-      updateLocalJobs((prevJobs) =>
-        prevJobs.map((job) =>
-          job.id === id ? { ...job, status: newStatus } : job
-        )
-      );
-
+      if (!data) throw new Error('Lowongan tidak ditemukan atau status tidak berubah.');
+      updateLocalJobs((prevJobs) => prevJobs.map((job) => job.id === id ? { ...job, status: newStatus } : job));
       toast.success(`Status lowongan berhasil diperbarui menjadi ${newStatus}.`);
       return true;
     } catch (error) {
-      updateLocalJobs((prevJobs) =>
-        prevJobs.map((job) =>
-          job.id === id ? { ...job, status: newStatus } : job
-        )
-      );
-      if (isRlsError(error)) {
-        toast.error('Status tidak bisa diubah karena policy RLS Supabase memblokir UPDATE. Cek policy admin pada tabel jobs.');
-      } else {
-        toast.error('Gagal memperbarui status lowongan.');
-      }
+      showActionError(error, 'Gagal memperbarui status lowongan.', 'Status tidak bisa diubah karena policy RLS Supabase memblokir UPDATE. Cek policy admin pada tabel jobs.');
       return false;
     }
   };
 
   const toggleFeatured = async (id, currentVal) => {
+    if (id == null) {
+      toast.error('Lowongan tidak valid.');
+      return false;
+    }
     const newVal = !currentVal;
-
     try {
-      const { error } = await supabase
-        .from('jobs')
-        .update({ featured: newVal })
-        .eq('id', id);
-
+      const { data, error } = await supabase.from('jobs').update({ featured: newVal }).eq('id', id).select('id').single();
       if (error) throw error;
-
-      updateLocalJobs((prevJobs) =>
-        sortJobsByFeatured(
-          prevJobs.map((job) =>
-            job.id === id ? { ...job, featured: newVal } : job
-          )
-        )
-      );
-
+      if (!data) throw new Error('Lowongan tidak ditemukan atau status premium tidak berubah.');
+      updateLocalJobs((prevJobs) => sortJobsByFeatured(prevJobs.map((job) => job.id === id ? { ...job, featured: newVal } : job)));
       toast.success(`Status Premium lowongan ${newVal ? 'diaktifkan' : 'dinonaktifkan'}.`);
       return true;
     } catch (error) {
-      updateLocalJobs((prevJobs) =>
-        sortJobsByFeatured(
-          prevJobs.map((job) =>
-            job.id === id ? { ...job, featured: newVal } : job
-          )
-        )
-      );
-      if (isRlsError(error)) {
-        toast.error('Premium toggle diblokir oleh RLS Supabase. Pastikan akun admin memiliki izin UPDATE pada tabel jobs.');
-      } else {
-        toast.error('Gagal mengubah status premium lowongan.');
-      }
+      showActionError(error, 'Gagal mengubah status premium lowongan.', 'Premium toggle diblokir oleh RLS Supabase. Pastikan akun admin memiliki izin UPDATE pada tabel jobs.');
       return false;
     }
   };
 
   const deleteJob = async (id) => {
     try {
-      const { error } = await supabase.from('jobs').delete().eq('id', id);
-
-      if (error) {
-        toast.error('Gagal menghapus data: ' + error.message);
-        throw error;
-      }
-
+      const { data, error } = await supabase.from('jobs').delete().eq('id', id).select('id').single();
+      if (error) throw error;
+      if (!data) throw new Error('Lowongan tidak ditemukan atau tidak terhapus.');
       updateLocalJobs((prevJobs) => prevJobs.filter((job) => job.id !== id));
       toast.success('Lowongan berhasil dihapus permanen dari Supabase.');
       return true;
-    } catch {
+    } catch (error) {
+      toast.error('Gagal menghapus data: ' + (error?.message || 'operasi gagal.'));
       return false;
     }
   };
 
-  return {
-    createJob,
-    updateJob,
-    updateJobStatus,
-    toggleFeatured,
-    deleteJob,
-  };
+  return { createJob, updateJob, updateJobStatus, toggleFeatured, deleteJob };
 }

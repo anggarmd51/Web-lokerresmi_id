@@ -25,6 +25,8 @@ test('creates a complete JobPosting with stable URL and employer data', () => {
   assert.equal(schema.hiringOrganization.name, baseJob.company);
   assert.equal(schema.datePosted, '2025-01-15T10:00:00.000Z');
   assert.equal(schema.employmentType, 'FULL_TIME');
+  assert.match(schema.description, /Persyaratan: Menguasai JavaScript/);
+  assert.match(schema.description, /Lokasi: Jakarta, Indonesia/);
   assert.equal(schema.validThrough, undefined);
   assert.equal(schema.directApply, undefined);
 });
@@ -46,6 +48,21 @@ test('omits expired jobs and preserves an actual future deadline', () => {
   assert.equal(current.validThrough, '2099-03-04T00:00:00.000Z');
 });
 
+test('does not invent validThrough from unsupported deadline fields or accept a deadline before publication', () => {
+  const fromUnsupportedField = createJobPostingJsonLd({ ...baseJob, deadline: '2099-03-04T00:00:00Z' });
+  assert.equal(fromUnsupportedField.validThrough, undefined);
+
+  const beforePosted = createJobPostingJsonLd({ ...baseJob, validThrough: '2025-01-14T00:00:00Z' });
+  assert.equal(beforePosted, null);
+});
+
+test('rejects invalid calendar dates and non-ISO date strings', () => {
+  assert.equal(createJobPostingJsonLd({ ...baseJob, created_at: '2026-02-30' }), null);
+  assert.equal(createJobPostingJsonLd({ ...baseJob, created_at: 'January 15, 2025' }), null);
+  assert.equal(createJobPostingJsonLd({ ...baseJob, validThrough: '2099-02-30T00:00:00Z' }), null);
+  assert.equal(createJobPostingJsonLd({ ...baseJob, valid_through: 'not-a-date' }), null);
+});
+
 test('marks Indonesia remote jobs as TELECOMMUTE without inventing a portal employer', () => {
   const schema = createJobPostingJsonLd({ ...baseJob, location: 'Remote - Indonesia', type: 'freelance' });
   assert.equal(schema.jobLocationType, 'TELECOMMUTE');
@@ -65,6 +82,7 @@ test('does not mark hybrid jobs as TELECOMMUTE', () => {
 
 test('omits remote-only jobs without an explicit country instead of fabricating applicant scope', () => {
   assert.equal(createJobPostingJsonLd({ ...baseJob, location: 'Remote' }), null);
+  assert.equal(createJobPostingJsonLd({ ...baseJob, location: 'Remote - ID' }), null);
 });
 
 test('escapes description and requirements as HTML', () => {
@@ -78,4 +96,17 @@ test('uses date when created_at is unavailable and never uses the current day as
   const schema = createJobPostingJsonLd({ ...baseJob, created_at: null, date: '2024-06-07' });
   assert.equal(schema.datePosted, '2024-06-07T00:00:00.000Z');
   assert.equal(createJobPostingJsonLd({ ...baseJob, created_at: null, date: null }), null);
+});
+
+test('uses employer publication date rather than import timestamp when available', () => {
+  const schema = createJobPostingJsonLd({ ...baseJob, date_posted: '2025-01-10' });
+  assert.equal(schema.datePosted, '2025-01-10T00:00:00.000Z');
+});
+
+test('separates explicit multiple workplaces without splitting comma-delimited addresses', () => {
+  const schema = createJobPostingJsonLd({ ...baseJob, location: 'Bandung; Jabodetabek; Yogyakarta' });
+  assert.deepEqual(schema.jobLocation.map(place => place.address.addressLocality), ['Bandung', 'Jabodetabek', 'Yogyakarta']);
+  assert.ok(schema.jobLocation.every(place => place.address.addressCountry === 'ID'));
+  const single = createJobPostingJsonLd({ ...baseJob, location: 'Cikokol, Tangerang' });
+  assert.equal(single.jobLocation.address.addressLocality, 'Cikokol, Tangerang');
 });

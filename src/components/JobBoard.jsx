@@ -8,6 +8,7 @@ import useAuth from '../hooks/useAuth';
 import useJobs from '../hooks/useJobs';
 import useJobRoute from '../hooks/useJobRoute';
 import { jobPath, updatePageMetadata } from '../lib/seo';
+import { filterJobsForLanding } from '../lib/landingPages';
 import useJobActions from '../hooks/useJobActions';
 import useCVOrders from '../hooks/useCVOrders';
 import useSiteStats from '../hooks/useSiteStats';
@@ -93,6 +94,9 @@ const Navbar = ({ onOpenPostJob, onOpenAdminLogin, isAdmin, isDark, toggleDarkMo
 
           <div className="hidden md:flex space-x-3 lg:space-x-5 font-medium text-slate-600 dark:text-slate-300 items-center text-sm">
             <a href="#jobs" className="hover:text-teal dark:hover:text-teal transition">Cari Kerja</a>
+            <a href="/lowongan-kerja/medan" className="hover:text-teal dark:hover:text-teal transition">Loker Medan</a>
+            <a href="/lowongan-admin/medan" className="hover:text-teal dark:hover:text-teal transition">Admin Medan</a>
+            <a href="/lowongan-fresh-graduate" className="hover:text-teal dark:hover:text-teal transition">Fresh Graduate</a>
             <a href="#cv-service" className="hover:text-teal dark:hover:text-teal transition">Buat CV ATS</a>
             <a href="#community" className="hover:text-teal dark:hover:text-teal transition">Komunitas</a>
 
@@ -163,14 +167,14 @@ const Navbar = ({ onOpenPostJob, onOpenAdminLogin, isAdmin, isDark, toggleDarkMo
   );
 };
 
-const Hero = ({ searchTerm, setSearchTerm, selectedTag, setSelectedTag }) => {
+const Hero = ({ searchTerm, setSearchTerm, selectedTag, setSelectedTag, landing }) => {
   const tags = ['Semua', ...publicCategories];
 
   return (
     <div className="bg-navy text-white py-10 sm:py-16 px-4 text-center relative overflow-hidden">
       <div className="max-w-4xl mx-auto relative z-10">
         <span className="bg-teal/15 text-teal text-[10px] sm:text-xs font-semibold px-3 py-1 rounded-full uppercase tracking-wider mb-4 inline-block">Portal Karier & B2B Talent Terpercaya</span>
-        <h1 className="text-2xl sm:text-4xl lg:text-5xl font-extrabold mb-3 sm:mb-4 leading-tight">Wujudkan Karier Impianmu Bersama Perusahaan Terbaik</h1>
+        <h1 className="text-2xl sm:text-4xl lg:text-5xl font-extrabold mb-3 sm:mb-4 leading-tight">{landing?.h1 || 'Wujudkan Karier Impianmu Bersama Perusahaan Terbaik'}</h1>
         <p className="text-slate-300 mb-6 sm:mb-8 max-w-2xl mx-auto text-xs sm:text-sm lg:text-base leading-relaxed">Ribuan lowongan terverifikasi dan layanan optimasi CV profesional siap mengantar kesuksesan kariermu.</p>
 
         <div className="bg-white p-2 rounded-2xl shadow-xl flex flex-col sm:flex-row gap-2 max-w-2xl mx-auto border border-white/20">
@@ -233,7 +237,7 @@ const StatsBar = ({ totalJobs, totalCompanies, totalApplicants }) => (
   </div>
 );
 
-const JobFeed = ({ jobs, onSelectJob, searchTerm, selectedTag, onResetFilters, loading }) => {
+const JobFeed = ({ jobs, onSelectJob, searchTerm, selectedTag, onResetFilters, loading, landing }) => {
   const [visibleCount, setVisibleCount] = useState(6);
 
   const filteredJobs = sortJobsByFeatured(
@@ -262,7 +266,7 @@ const JobFeed = ({ jobs, onSelectJob, searchTerm, selectedTag, onResetFilters, l
     <div id="jobs" className="py-10 sm:py-16 max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
       <div className="flex flex-col gap-3 sm:flex-row sm:justify-between sm:items-end mb-6 sm:mb-8">
         <div>
-          <h2 className="text-xl sm:text-2xl lg:text-3xl font-bold text-navy dark:text-white">Lowongan Kerja Terbaru</h2>
+          <h2 className="text-xl sm:text-2xl lg:text-3xl font-bold text-navy dark:text-white">{landing ? `Lowongan ${landing.key === 'fresh-graduate' ? 'Fresh Graduate' : 'di ' + landing.location}` : 'Lowongan Kerja Terbaru'}</h2>
           <p className="text-slate-500 dark:text-slate-400 text-xs sm:text-sm mt-1">Peluang karier pilihan untuk profesional Indonesia</p>
         </div>
         <span className="inline-flex self-start sm:self-auto text-xs sm:text-sm font-semibold text-teal bg-teal/10 px-3 py-1 rounded-full">{filteredJobs.length} Lowongan Tersedia</span>
@@ -800,7 +804,8 @@ const PostJobModal = ({ isOpen, onClose, onAddJob, isAdminMode = false }) => {
       applyTarget,
       applicantsCount: 0,
     };
-    await onAddJob(newJob);
+    const savedJob = await onAddJob(newJob);
+    if (!savedJob) return;
 
     if (!isAdminMode) {
       const adminWa = '085179905019';
@@ -887,10 +892,10 @@ const EditJobModal = ({ job, onClose, onSave }) => {
   const [applyTarget, setApplyTarget] = useState(job.applyTarget || '');
   const [requirementsText, setRequirementsText] = useState(() => formatRequirementsToText(job.requirements));
 
-  const handleSubmit = (e) => {
+  const handleSubmit = async (e) => {
     e.preventDefault();
     const updatedRequirements = parseRequirements(requirementsText);
-    onSave({
+    const saved = await onSave({
       ...job,
       title,
       company,
@@ -903,7 +908,7 @@ const EditJobModal = ({ job, onClose, onSave }) => {
       applyTarget,
       requirements: updatedRequirements,
     });
-    onClose();
+    if (saved) onClose();
   };
 
   return (
@@ -1410,8 +1415,7 @@ const SuperAdminDashboard = ({
           job={editingJob}
           onClose={() => setEditingJob(null)}
           onSave={async (updated) => {
-            setJobs(jobs.map(j => j.id === updated.id ? updated : j));
-            await saveEditedJob(updated);
+            return saveEditedJob(updated);
           }}
         />
       )}
@@ -1422,8 +1426,9 @@ const SuperAdminDashboard = ({
           onClose={() => setIsAddJobOpen(false)}
           onAddJob={async (newJob) => {
             if (onAddJob) {
-              await onAddJob(newJob);
+              return onAddJob(newJob);
             }
+            return null;
           }}
           isAdminMode={true}
         />
@@ -1485,13 +1490,16 @@ export default function JobBoard() {
     return (jobs || []).filter((j) => j.status === 'Aktif');
   }, [activeJobs, jobs]);
 
+  const landing = route.isLanding ? route.landing : null;
+  const landingJobs = useMemo(() => landing ? filterJobsForLanding(publicJobs, landing) : publicJobs, [publicJobs, landing]);
+
   const selectedJob = !route.invalid && route.isDetail
     ? publicJobs.find((job) => String(job.id) === route.id) || null
     : null;
 
   useEffect(() => {
-    updatePageMetadata(selectedJob, route, { loading, error: jobsError });
-  }, [selectedJob, route, loading, jobsError]);
+    updatePageMetadata(selectedJob, route, { loading, error: jobsError, landingJobs });
+  }, [selectedJob, route, loading, jobsError, landingJobs]);
 
   const handleApplyTrack = async (jobId) => {
     // jobs publik read-only: jangan UPDATE applicantsCount dari browser.
@@ -1504,11 +1512,11 @@ export default function JobBoard() {
       toast.error('Publik hanya dapat membaca lowongan. Hubungi admin untuk memasang lowongan.');
       return null;
     }
-    await createJob(newJobData);
+    return createJob(newJobData);
   };
 
   const saveEditedJob = async (updated) => {
-    await updateJob(updated);
+    return updateJob(updated);
   };
 
   // Menunggu validasi sesi Supabase selesai sebelum mengevaluasi proteksi SuperAdminDashboard
@@ -1564,18 +1572,19 @@ export default function JobBoard() {
           isDark={isDark}
           toggleDarkMode={toggleDarkMode}
         />
-        <Hero searchTerm={searchTerm} setSearchTerm={setSearchTerm} selectedTag={selectedTag} setSelectedTag={setSelectedTag} />
+        <Hero searchTerm={searchTerm} setSearchTerm={setSearchTerm} selectedTag={selectedTag} setSelectedTag={setSelectedTag} landing={landing} />
         <StatsBar
           totalJobs={publicJobs.length}
           totalCompanies={new Set(publicJobs.map(job => (job.company || '').trim()).filter(Boolean)).size}
           totalApplicants={publicJobs.reduce((sum, job) => sum + (job.applicantsCount || 0), 0)}
         />
         <JobFeed
-          jobs={publicJobs}
+          jobs={landingJobs}
           onSelectJob={openJob}
           searchTerm={searchTerm}
           selectedTag={selectedTag}
           loading={loading}
+          landing={landing}
           onResetFilters={() => {
             setSearchTerm('');
             setSelectedTag('');

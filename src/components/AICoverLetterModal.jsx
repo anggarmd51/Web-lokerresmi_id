@@ -1,5 +1,4 @@
 import React, { useEffect, useState, useRef } from 'react';
-import html2pdf from 'html2pdf.js';
 import {
   Sparkles,
   FileText,
@@ -376,6 +375,7 @@ export default function AICoverLetterModal({ isOpen, onClose, onOpenOrderModal, 
         jsPDF: { unit: 'mm', format: 'a4', orientation: 'portrait' },
       };
 
+      const { default: html2pdf } = await import('html2pdf.js');
       await html2pdf().set(opt).from(htmlString).save();
       toast.success('Surat lamaran A4 berhasil diunduh sebagai PDF!');
     } catch (err) {

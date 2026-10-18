@@ -35,7 +35,7 @@ test('fetchActiveJobs paginates with explicit limit and offset', async () => {
   assert.equal(rows.length, PAGE_SIZE + 2);
   assert.equal(calls.length, 2);
   assert.equal(new URL(calls[0].url).searchParams.get('status'), 'eq.Aktif');
-  assert.equal(new URL(calls[0].url).searchParams.get('select'), 'id,created_at,status');
+  assert.equal(new URL(calls[0].url).searchParams.get('select'), 'id,created_at,status,location,category,title,desc,requirements');
   assert.equal(new URL(calls[0].url).searchParams.get('limit'), String(PAGE_SIZE));
   assert.equal(new URL(calls[1].url).searchParams.get('offset'), String(PAGE_SIZE));
   assert.equal(calls[0].options.headers.apikey, 'anon-key');
@@ -60,6 +60,17 @@ test('invalid date values are omitted', () => {
   assert.equal(validLastmod('2026-02-30'), null);
   assert.equal(validLastmod('definitely invalid'), null);
   assert.equal(validLastmod(null), null);
+});
+
+test('renderSitemap includes only landings supported by active matching jobs', () => {
+  const xml = renderSitemap([
+    { id: 1, status: 'Aktif', location: 'Medan', category: 'Sales & Marketing', title: 'Sales', desc: 'Pekerjaan kantor' },
+    { id: 2, status: 'Aktif', location: 'Jakarta', category: 'IT & Software', title: 'Developer', desc: 'Fresh graduate dipersilakan' },
+    { id: 3, status: 'Aktif', location: 'Medan', category: 'HRD/Personalia', title: 'HR', desc: 'Tidak menerima fresh graduate' },
+  ]);
+  assert.match(xml, /\/lowongan-kerja\/medan/);
+  assert.doesNotMatch(xml, /\/lowongan-admin\/medan/);
+  assert.match(xml, /\/lowongan-fresh-graduate/);
 });
 
 test('Supabase HTTP failures reject instead of returning an empty sitemap', async () => {
