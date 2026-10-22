@@ -86,6 +86,7 @@ test('Vercel routes protect sitemap, API, and filesystem before SPA fallback', a
   assert.deepEqual(config.routes.map((route) => route.src ?? route.handle), [
     '/sitemap\\.xml',
     '/api/(.*)',
+    '/lowongan/([^/]+)/?',
     'filesystem',
     '/(.*)',
   ]);

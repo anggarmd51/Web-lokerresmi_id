@@ -1,10 +1,12 @@
 {
   "functions": {
-    "api/gemini.js": { "maxDuration": 60 }
+    "api/gemini.js": { "maxDuration": 60 },
+    "api/job-detail.js": { "includeFiles": "dist/index.html" }
   },
   "routes": [
     { "src": "/sitemap\\.xml", "dest": "/api/sitemap.js" },
     { "src": "/api/(.*)", "dest": "/api/$1" },
+    { "src": "/lowongan/([^/]+)/?", "dest": "/api/job-detail.js?id=$1" },
     { "handle": "filesystem" },
     { "src": "/(.*)", "dest": "/index.html" }
   ]

@@ -383,7 +383,7 @@ const JobDetailModal = ({ job, onClose, onApplyTrack, onOpenCoverLetter }) => {
             <span>Terdaftar: {displayDate(job, formatJobDate)}</span>
           </span>
         </div>
-        <h2 id="job-detail-title" className="text-xl sm:text-2xl font-bold text-navy dark:text-white mt-1 mb-1 leading-snug">{job.title}</h2>
+        <h1 id="job-detail-title" className="text-xl sm:text-2xl font-bold text-navy dark:text-white mt-1 mb-1 leading-snug">{job.title}</h1>
         <p className="text-slate-600 dark:text-slate-300 font-semibold mb-3 sm:mb-4 text-xs sm:text-sm md:text-base">{job.company} • {job.location}</p>
         <div className="bg-slate-50 dark:bg-slate-800/80 p-3 sm:p-4 rounded-xl mb-4 text-xs sm:text-sm space-y-2 border border-slate-100 dark:border-slate-700">
           <div className="flex justify-between gap-3 text-slate-700 dark:text-slate-200"><strong>Kisaran Gaji:</strong> <span className="text-teal font-bold text-right">{displaySalary(job.salary)}</span></div>

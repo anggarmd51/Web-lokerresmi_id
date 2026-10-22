@@ -39,6 +39,8 @@ function setMeta(selector, attribute, name, content) {
 }
 
 export function updatePageMetadata(job, route, { loading = false, error = false, landingJobs = null } = {}) {
+  const ssrJobId = document.getElementById?.('root')?.getAttribute?.('data-job-id');
+  if (!job && loading && route.isDetail && route.id && String(ssrJobId) === String(route.id)) return;
   const landing = route.landing || (route.isLanding ? getLandingPage(route.path) : null);
   const isEmptyLanding = Boolean(landing && (error || (!loading && (!Array.isArray(landingJobs) || !landingJobs.length))));
   const title = job
@@ -64,7 +66,10 @@ export function updatePageMetadata(job, route, { loading = false, error = false,
   }
   canonical.setAttribute('href', url);
   setMeta('meta[name="description"]', 'name', 'description', description);
-  setMeta('meta[name="robots"]', 'name', 'robots', route.invalid || (route.isDetail && (!job || !createJobPostingJsonLd(job))) || isEmptyLanding ? 'noindex,follow' : 'index,follow');
+  // Server-rendered detail metadata must not be replaced by transient noindex while the client fetch is in flight.
+  const detailLoading = route.isDetail && route.id && !route.invalid && loading;
+  const robots = detailLoading ? 'index,follow' : (route.invalid || (route.isDetail && (!job || !createJobPostingJsonLd(job))) || isEmptyLanding ? 'noindex,follow' : 'index,follow');
+  setMeta('meta[name="robots"]', 'name', 'robots', robots);
   for (const [name, content] of Object.entries({
     'og:type': 'website', 'og:title': title, 'og:description': description,
     'og:url': url, 'og:image': image, 'og:image:secure_url': image, 'og:site_name': 'Lokerresmi.id',
