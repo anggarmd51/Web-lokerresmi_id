@@ -135,23 +135,23 @@ const JobFeed = ({ jobs, onSelectJob, searchTerm, locationTerm, selectedTag, set
 
 const CVServicePromo = ({ onSelectPackage, onOpenAIChecker, onOpenCoverLetter }) => {
   return (
-    <div id="cv-service" className="bg-gradient-to-r from-navy to-[#2A3D63] py-10 sm:py-16 text-white my-8 sm:my-12">
+    <div id="cv-service" className="bg-slate-50 dark:bg-slate-950 py-10 sm:py-16 text-navy dark:text-slate-100 my-8 sm:my-12">
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
         <div className="text-center max-w-2xl mx-auto mb-8 sm:mb-10">
-          <span className="bg-teal/20 text-teal text-[10px] sm:text-xs font-bold px-3 py-1 rounded-full uppercase tracking-wider inline-block">
+          <span className="bg-teal text-white text-[10px] sm:text-xs font-bold px-3 py-1 rounded-full uppercase tracking-wider inline-block">
             Layanan Karir Profesional
           </span>
-          <h2 className="text-2xl sm:text-3xl font-extrabold mt-3 mb-3 sm:mb-4">
+          <h2 className="text-2xl sm:text-3xl text-navy dark:text-slate-100 font-extrabold mt-3 mb-3 sm:mb-4">
             Buat CV ATS-Friendly & Optimasi LinkedIn
           </h2>
-          <p className="text-slate-300 text-xs sm:text-sm md:text-base mb-6 leading-relaxed">
+          <p className="text-slate-700 dark:text-slate-300 text-xs sm:text-sm md:text-base mb-6 leading-relaxed">
             Susun CV yang mudah dibaca sistem ATS dengan format yang rapi dan bahasa profesional.
           </p>
           <div className="flex flex-col sm:flex-row items-center justify-center gap-3">
             <button
               type="button"
               onClick={onOpenAIChecker}
-              className="bg-teal hover:bg-teal/95 active:bg-teal text-white font-bold px-5 py-3.5 sm:py-3 rounded-xl shadow-xs transition w-full sm:w-auto text-xs sm:text-sm cursor-pointer active:scale-98 inline-flex items-center justify-center gap-2"
+              className="bg-teal hover:bg-[#115E59] active:bg-[#134E4A] text-white font-bold px-5 py-3.5 sm:py-3 rounded-xl shadow-xs transition w-full sm:w-auto text-xs sm:text-sm cursor-pointer active:scale-98 inline-flex items-center justify-center gap-2"
             >
               <Sparkles className="h-4 w-4" />
               <span>Cek Skor CV dengan AI (Gratis)</span>
@@ -159,9 +159,9 @@ const CVServicePromo = ({ onSelectPackage, onOpenAIChecker, onOpenCoverLetter })
             <button
               type="button"
               onClick={onOpenCoverLetter}
-              className="bg-white/15 hover:bg-white/25 active:bg-white/20 text-white font-bold px-5 py-3.5 sm:py-3 rounded-xl border border-white/20 shadow-xs transition w-full sm:w-auto text-xs sm:text-sm cursor-pointer active:scale-98 inline-flex items-center justify-center gap-2"
+              className="bg-teal hover:bg-[#115E59] active:bg-[#134E4A] text-white font-bold px-5 py-3.5 sm:py-3 rounded-xl border border-teal shadow-xs transition w-full sm:w-auto text-xs sm:text-sm cursor-pointer active:scale-98 inline-flex items-center justify-center gap-2"
             >
-              <FileText className="h-4 w-4 text-teal" />
+              <FileText className="h-4 w-4 text-white" />
               <span>AI Cover Letter Generator (Gratis)</span>
             </button>
           </div>
@@ -170,13 +170,13 @@ const CVServicePromo = ({ onSelectPackage, onOpenAIChecker, onOpenCoverLetter })
         {/* Profesional tampil pertama di mobile; desktop tetap Express, Profesional, VIP. */}
         <div className="grid grid-cols-1 md:grid-cols-3 gap-5 pb-4 pt-2">
           {/* Tier 1: Paket Express */}
-          <div className="order-2 md:order-1 min-w-0 bg-white/10 backdrop-blur-md p-5 sm:p-6 rounded-2xl border border-white/15 flex flex-col justify-between transition hover:border-white/30">
+          <div className="order-2 md:order-1 min-w-0 bg-white dark:bg-slate-900 p-5 sm:p-6 rounded-2xl border border-slate-300 dark:border-slate-700 flex flex-col justify-between transition-[border-color] hover:border-teal dark:hover:border-teal">
             <div>
               <div className="flex items-center justify-between mb-2">
-                <h3 className="font-bold text-base sm:text-lg text-white">Paket Express</h3>
+                <h3 className="font-bold text-base sm:text-lg text-navy dark:text-slate-100">Paket Express</h3>
               </div>
-              <div className="text-teal font-extrabold text-2xl sm:text-3xl mb-4">Rp 49.000</div>
-              <ul className="space-y-2.5 text-xs sm:text-sm text-slate-200 mb-6">
+              <div className="text-navy dark:text-slate-100 font-extrabold text-2xl sm:text-3xl mb-4">Rp 49.000</div>
+              <ul className="space-y-2.5 text-xs sm:text-sm text-slate-700 dark:text-slate-200 mb-6">
                 <li className="flex items-start gap-2"><span className="text-teal font-bold">✓</span><span>Format ATS Teruji</span></li>
                 <li className="flex items-start gap-2"><span className="text-teal font-bold">✓</span><span>Template Premium</span></li>
                 <li className="flex items-start gap-2"><span className="text-teal font-bold">✓</span><span>AI Generated Content</span></li>
@@ -185,23 +185,23 @@ const CVServicePromo = ({ onSelectPackage, onOpenAIChecker, onOpenCoverLetter })
             <button
               type="button"
               onClick={() => onSelectPackage('Paket Express (Rp 49.000)')}
-              className="w-full bg-white/15 hover:bg-white/25 active:bg-white/20 text-white font-bold py-2.5 sm:py-3 rounded-xl transition cursor-pointer text-xs sm:text-sm active:scale-98"
+              className="w-full bg-teal hover:bg-[#115E59] active:bg-[#134E4A] text-white font-bold py-2.5 sm:py-3 rounded-xl transition cursor-pointer text-xs sm:text-sm active:scale-98"
             >
               Pilih Paket
             </button>
           </div>
 
           {/* Tier 2: Paket Profesional (Populer) */}
-          <div className="order-1 md:order-2 min-w-0 bg-white/15 backdrop-blur-md p-5 sm:p-6 rounded-2xl border-2 border-teal relative flex flex-col justify-between shadow-xl transition hover:border-teal/80">
+          <div className="order-1 md:order-2 min-w-0 bg-white dark:bg-slate-900 p-5 sm:p-6 rounded-2xl border-2 border-teal relative flex flex-col justify-between shadow-xl transition hover:border-teal/80">
             <div className="absolute -top-3 right-5 bg-teal text-white text-[10px] sm:text-xs font-black px-3 py-0.5 rounded-full uppercase tracking-wider shadow-sm">
               Populer
             </div>
             <div>
               <div className="flex items-center justify-between mb-2">
-                <h3 className="font-bold text-base sm:text-lg text-white">Paket Profesional</h3>
+                <h3 className="font-bold text-base sm:text-lg text-navy dark:text-slate-100">Paket Profesional</h3>
               </div>
-              <div className="text-teal font-extrabold text-2xl sm:text-3xl mb-4">Rp 99.000</div>
-              <ul className="space-y-2.5 text-xs sm:text-sm text-slate-100 mb-6">
+              <div className="text-navy dark:text-slate-100 font-extrabold text-2xl sm:text-3xl mb-4">Rp 99.000</div>
+              <ul className="space-y-2.5 text-xs sm:text-sm text-slate-700 dark:text-slate-200 mb-6">
                 <li className="flex items-start gap-2"><span className="text-teal font-bold">✓</span><span>Format ATS yang terstruktur</span></li>
                 <li className="flex items-start gap-2"><span className="text-teal font-bold">✓</span><span>Redaksi Bahasa Profesional & SEO</span></li>
                 <li className="flex items-start gap-2"><span className="text-teal font-bold">✓</span><span>Konsultasi & Revisi Tanpa Batas</span></li>
@@ -210,20 +210,20 @@ const CVServicePromo = ({ onSelectPackage, onOpenAIChecker, onOpenCoverLetter })
             <button
               type="button"
               onClick={() => onSelectPackage('Paket Profesional (Rp 99.000)')}
-              className="w-full bg-teal hover:bg-teal/90 active:bg-teal text-white font-black py-2.5 sm:py-3 rounded-xl transition cursor-pointer text-xs sm:text-sm active:scale-98 shadow-sm"
+              className="w-full bg-teal hover:bg-[#115E59] active:bg-[#134E4A] text-white font-black py-2.5 sm:py-3 rounded-xl transition cursor-pointer text-xs sm:text-sm active:scale-98 shadow-sm"
             >
               Pilih Paket
             </button>
           </div>
 
           {/* Tier 3: Paket VIP Mentoring */}
-          <div className="order-3 min-w-0 bg-white/10 backdrop-blur-md p-5 sm:p-6 rounded-2xl border border-white/15 flex flex-col justify-between transition hover:border-white/30">
+          <div className="order-3 min-w-0 bg-white dark:bg-slate-900 p-5 sm:p-6 rounded-2xl border border-slate-300 dark:border-slate-700 flex flex-col justify-between transition-[border-color] hover:border-teal dark:hover:border-teal">
             <div>
               <div className="flex items-center justify-between mb-2">
-                <h3 className="font-bold text-base sm:text-lg text-white">Paket VIP Mentoring</h3>
+                <h3 className="font-bold text-base sm:text-lg text-navy dark:text-slate-100">Paket VIP Mentoring</h3>
               </div>
-              <div className="text-teal font-extrabold text-2xl sm:text-3xl mb-4">Rp 249.000</div>
-              <ul className="space-y-2.5 text-xs sm:text-sm text-slate-200 mb-6">
+              <div className="text-navy dark:text-slate-100 font-extrabold text-2xl sm:text-3xl mb-4">Rp 249.000</div>
+              <ul className="space-y-2.5 text-xs sm:text-sm text-slate-700 dark:text-slate-200 mb-6">
                 <li className="flex items-start gap-2"><span className="text-teal font-bold">✓</span><span>Semua di Paket Pro</span></li>
                 <li className="flex items-start gap-2"><span className="text-teal font-bold">✓</span><span>Simulasi Interview HR</span></li>
                 <li className="flex items-start gap-2"><span className="text-teal font-bold">✓</span><span>Dukungan persiapan karier</span></li>
@@ -232,7 +232,7 @@ const CVServicePromo = ({ onSelectPackage, onOpenAIChecker, onOpenCoverLetter })
             <button
               type="button"
               onClick={() => onSelectPackage('Paket VIP Mentoring (Rp 249.000)')}
-              className="w-full bg-white/15 hover:bg-white/25 active:bg-white/20 text-white font-bold py-2.5 sm:py-3 rounded-xl transition cursor-pointer text-xs sm:text-sm active:scale-98"
+              className="w-full bg-teal hover:bg-[#115E59] active:bg-[#134E4A] text-white font-bold py-2.5 sm:py-3 rounded-xl transition cursor-pointer text-xs sm:text-sm active:scale-98"
             >
               Pilih Paket
             </button>
