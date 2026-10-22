@@ -54,6 +54,8 @@ const hasSuppliedDeadline = (value) => value !== undefined && value !== null && 
 
 const mapEmploymentType = (type) => {
   const value = textValue(type).toLowerCase().replace(/[\s_-]+/g, ' ');
+  if (value === 'penuh waktu') return 'FULL_TIME';
+  if (value === 'paruh waktu / freelance') return ['PART_TIME', 'OTHER'];
   if (value === 'full' || value === 'full time' || value === 'fulltime') return 'FULL_TIME';
   if (value === 'part time' || value === 'parttime') return 'PART_TIME';
   if (value === 'kontrak' || value === 'contract' || value === 'contractor') return 'CONTRACTOR';

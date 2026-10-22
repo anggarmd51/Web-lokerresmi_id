@@ -1,0 +1,39 @@
+[
+  {
+    "id": 46,
+    "title": "Sales Freelance",
+    "company": "PT. Beran Solusindo Pratama",
+    "desc": "Memasarkan produk/layanan B2B, melakukan prospeksi klien, serta menjalin hubungan dengan mitra bisnis.",
+    "location": "Medan, Sumatera Utara, Indonesia",
+    "type": "Paruh waktu / Freelance",
+    "status": "Aktif",
+    "created_at": "2026-09-10T08:46:48.970+00:00",
+    "date_posted": null,
+    "valid_through": null,
+    "salary": "-",
+    "category": "Sales & Marketing",
+    "requirements": [
+      "Pendidikan minimal SMA",
+      "Pengalaman kerja di Bidang Sales",
+      "Mampu berkomunikasi dengan baik, inisiatif, dan berorientasi hasil",
+      "Mampu bekerja mandiri maupun kolaboratif dalam tim"
+    ]
+  },
+  {
+    "id": 47,
+    "title": "Network Architect Section Head - AIHO",
+    "company": "PT Astra International Tbk",
+    "desc": "Merancang, mengoptimalkan, dan mengelola arsitektur jaringan perusahaan serta infrastruktur AIHO secara efisien dan aman.",
+    "location": "Jakarta / Jarak Jauh (Remote), Indonesia",
+    "type": "Penuh waktu",
+    "status": "Aktif",
+    "created_at": "2026-10-10T20:30:16.334+00:00",
+    "date_posted": null,
+    "valid_through": "2026-12-31T16:59:59+00:00",
+    "salary": "Kompetitif",
+    "category": "IT & Software",
+    "requirements": [
+      "Memahami routing dan switching protocols; berpengalaman dalam implementasi, pengelolaan, dan optimasi SD-WAN; memahami arsitektur network security serta jaringan cloud service providers; familiar dengan Network Monitoring Tools dan Network Automation; memiliki kemampuan leadership dan manajemen tim, komunikasi verbal dan tertulis, analitis, serta problem-solving yang kuat."
+    ]
+  }
+]
