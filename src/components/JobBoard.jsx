@@ -1,5 +1,5 @@
 import React, { useCallback, useEffect, useMemo, useState } from 'react';
-import { Calendar, Facebook, Instagram, Linkedin, Moon, Music2, Search, SearchX, Sun, Sparkles, FileText } from 'lucide-react';
+import { ArrowUpDown, Calendar, ExternalLink, Facebook, Instagram, Linkedin, MapPin, Moon, Music2, Search, SearchX, SlidersHorizontal, Sun, Sparkles, FileText } from 'lucide-react';
 import { toast } from 'react-hot-toast';
 import { supabase } from '../lib/supabase';
 import { sortJobsByFeatured } from '../lib/utils';
@@ -21,6 +21,7 @@ import QuickShareButton from './QuickShareButton';
 import AICVCheckerModal from './AICVCheckerModal';
 import AICoverLetterModal from './AICoverLetterModal';
 import EmployerInquiryModal from './EmployerInquiryModal';
+import { displayDate, displayDeadline, displayJobType, displaySalary, displaySource } from '../lib/jobPresentation';
 
 const publicCategories = ['IT & Software', 'Sales & Marketing', 'Keuangan/Akuntansi', 'HRD/Personalia', 'Administrasi', 'Teknik/Engineering', 'Logistik/Operasional', 'Pelayanan Pelanggan'];
 
@@ -46,320 +47,90 @@ const formatJobTime = (dateVal) => {
 
 const Navbar = ({ onOpenPostJob, onOpenAdminLogin, isAdmin, isDark, toggleDarkMode }) => {
   const [isOpen, setIsOpen] = useState(false);
-
-  const handleNavClick = (callback) => {
-    setIsOpen(false);
-    if (callback) callback();
-  };
-
+  const closeMenu = () => setIsOpen(false);
   return (
-    <nav className="bg-white dark:bg-slate-900 shadow-xs sticky top-0 z-40 border-b border-slate-100 dark:border-slate-800 transition-colors">
-      <div className="max-w-7xl mx-auto px-3.5 sm:px-6 lg:px-8 py-2.5 sm:py-3">
-        <div className="flex flex-col gap-2.5 sm:flex-row sm:items-center sm:justify-between">
-          <div className="flex items-center justify-between sm:justify-start gap-2.5 sm:gap-3">
-            <div className="flex items-center gap-2.5 sm:gap-3 cursor-pointer group" onClick={() => window.scrollTo({ top: 0, behavior: 'smooth' })}>
-              <img src="/logo.png" alt="Logo Lokerresmi.id" className="h-9 sm:h-10 w-auto object-contain" />
-              <div className="flex items-center bg-navy px-2.5 sm:px-3 py-1.5 sm:py-2.5 rounded-xl shadow-xs ring-1 ring-slate-200/10">
-                <span className="antialiased text-[10px] sm:text-xs lg:text-sm font-bold text-white tracking-[0.16em] sm:tracking-[0.24em] uppercase whitespace-nowrap">LOKER RESMI.ID</span>
-              </div>
-            </div>
-
-            <div className="flex items-center gap-2 md:hidden">
-              {/* Tombol Cepat Mode Gelap di Mobile Navbar */}
-              <button
-                type="button"
-                aria-label={isDark ? 'Ganti ke Mode Terang' : 'Ganti ke Mode Gelap'}
-                title={isDark ? 'Mode Terang' : 'Mode Gelap'}
-                onClick={toggleDarkMode}
-                className="flex h-11 w-11 min-h-[44px] min-w-[44px] items-center justify-center rounded-xl border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-800 text-slate-700 dark:text-amber-400 shadow-xs active:scale-95 transition cursor-pointer"
-              >
-                {isDark ? <Sun className="h-5 w-5 text-amber-400" /> : <Moon className="h-5 w-5 text-slate-600" />}
-              </button>
-
-              <button
-                type="button"
-                aria-label="Toggle menu"
-                aria-expanded={isOpen}
-                onClick={() => setIsOpen((prev) => !prev)}
-                className="flex h-11 w-11 min-h-[44px] min-w-[44px] items-center justify-center rounded-xl border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-800 text-slate-700 dark:text-slate-200 shadow-xs active:bg-slate-100 dark:active:bg-slate-700 transition cursor-pointer"
-              >
-                <span className="flex flex-col gap-1.5">
-                  <span className={`block h-0.5 w-5 rounded-full bg-slate-700 dark:bg-slate-300 transition-all duration-300 ease-out ${isOpen ? 'translate-y-2 rotate-45' : ''}`} />
-                  <span className={`block h-0.5 w-5 rounded-full bg-slate-700 dark:bg-slate-300 transition-all duration-300 ease-out ${isOpen ? 'opacity-0' : 'opacity-100'}`} />
-                  <span className={`block h-0.5 w-5 rounded-full bg-slate-700 dark:bg-slate-300 transition-all duration-300 ease-out ${isOpen ? '-translate-y-2 -rotate-45' : ''}`} />
-                </span>
-              </button>
-            </div>
-          </div>
-
-          <div className="hidden md:flex space-x-3 lg:space-x-5 font-medium text-slate-600 dark:text-slate-300 items-center text-sm">
-            <a href="#jobs" className="hover:text-teal dark:hover:text-teal transition">Cari Kerja</a>
-            <a href="/lowongan-kerja/medan" className="hover:text-teal dark:hover:text-teal transition">Loker Medan</a>
-            <a href="/lowongan-admin/medan" className="hover:text-teal dark:hover:text-teal transition">Admin Medan</a>
-            <a href="/lowongan-fresh-graduate" className="hover:text-teal dark:hover:text-teal transition">Fresh Graduate</a>
-            <a href="#cv-service" className="hover:text-teal dark:hover:text-teal transition">Buat CV ATS</a>
-            <a href="#community" className="hover:text-teal dark:hover:text-teal transition">Komunitas</a>
-
-            {/* Tombol Toggle Mode Gelap Desktop */}
-            <button
-              type="button"
-              onClick={toggleDarkMode}
-              aria-label={isDark ? 'Ganti ke Mode Terang' : 'Ganti ke Mode Gelap'}
-              title={isDark ? 'Mode Terang' : 'Mode Gelap'}
-              className="flex items-center gap-1.5 px-3 py-2 rounded-xl border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-800 text-slate-700 dark:text-amber-400 hover:bg-slate-100 dark:hover:bg-slate-700 transition cursor-pointer active:scale-95 text-xs font-semibold"
-            >
-              {isDark ? <Sun className="h-4 w-4 text-amber-400" /> : <Moon className="h-4 w-4 text-slate-600" />}
-              <span>{isDark ? 'Terang' : 'Gelap'}</span>
+    <nav className="editorial-nav bg-white dark:bg-slate-900 sticky top-0 z-40 border-b border-slate-200 dark:border-slate-800">
+      <div className="editorial-container max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+        <div className="flex min-h-[68px] items-center justify-between gap-4">
+          <a href="#top" className="editorial-brand flex items-center gap-3" onClick={closeMenu}>
+            <img src="/logo.png" alt="Logo Lokerresmi.id" className="h-9 w-auto object-contain" />
+            <span className="editorial-wordmark">LokerResmi<span>.id</span></span>
+          </a>
+          <div className="hidden md:flex items-center gap-6 text-sm font-semibold text-slate-600 dark:text-slate-300">
+            <a href="#jobs" className="editorial-nav-link hover:text-teal">Cari Lowongan</a>
+            <a href="#cv-service" className="editorial-nav-link hover:text-teal">Layanan Karier</a>
+            <button type="button" onClick={onOpenPostJob} className="editorial-nav-link editorial-company-nav hover:text-teal">Untuk Perusahaan ↗</button>
+            <button type="button" onClick={onOpenAdminLogin} className="editorial-nav-link editorial-login hover:text-teal">{isAdmin ? 'Dashboard Admin' : 'Masuk'}</button>
+            <button type="button" onClick={toggleDarkMode} aria-label={isDark ? 'Ganti ke mode terang' : 'Ganti ke mode gelap'} className="editorial-theme-toggle rounded-lg border border-slate-300 dark:border-slate-700 p-2 hover:border-teal">
+              {isDark ? <Sun className="h-4 w-4 text-amber-400" /> : <Moon className="h-4 w-4" />}
             </button>
-
-            <button onClick={onOpenPostJob} className="bg-teal hover:bg-teal/90 text-navy font-bold px-4 py-2.5 rounded-xl shadow-xs transition text-sm cursor-pointer active:scale-98">Pasang Lowongan</button>
-            <button onClick={onOpenAdminLogin} className="border border-slate-300 dark:border-slate-700 hover:border-teal text-slate-700 dark:text-slate-200 hover:text-teal px-3.5 py-2.5 rounded-xl font-medium transition text-sm cursor-pointer active:scale-98">{isAdmin ? 'Dashboard Admin' : '🔑 Login'}</button>
+          </div>
+          <div className="flex items-center gap-2 md:hidden">
+            <button type="button" onClick={toggleDarkMode} aria-label="Ubah mode warna" className="rounded-lg border border-slate-300 p-2 dark:border-slate-700">{isDark ? <Sun className="h-5 w-5 text-amber-400" /> : <Moon className="h-5 w-5" />}</button>
+            <button type="button" onClick={() => setIsOpen((v) => !v)} aria-expanded={isOpen} aria-label="Buka menu" className="rounded-lg border border-slate-300 p-2 dark:border-slate-700"><SlidersHorizontal className="h-5 w-5" /></button>
           </div>
         </div>
-
-        <div
-          className={`md:hidden overflow-hidden transition-all duration-300 ease-out ${
-            isOpen
-              ? 'mt-2.5 max-h-96 opacity-100 visible rounded-2xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-900 shadow-xl'
-              : 'max-h-0 opacity-0 invisible mt-0 border-0'
-          }`}
-        >
-          <div className="flex flex-col divide-y divide-slate-100 dark:divide-slate-800 p-1.5">
-            {[
-              { href: '#jobs', label: '🔍 Cari Kerja' },
-              { href: '#cv-service', label: '📄 Buat CV ATS' },
-              { href: '#community', label: '💬 Komunitas Loker' }
-            ].map((item, index) => (
-              <a
-                key={item.href}
-                href={item.href}
-                onClick={() => setIsOpen(false)}
-                className={`px-4 py-3.5 text-sm font-medium text-slate-700 dark:text-slate-200 transition-all duration-300 ease-out hover:bg-slate-50 dark:hover:bg-slate-800 active:bg-slate-100 rounded-lg ${
-                  isOpen ? 'translate-x-0 opacity-100' : '-translate-x-3 opacity-0'
-                }`}
-                style={{ transitionDelay: isOpen ? `${index * 60}ms` : '0ms' }}
-              >
-                {item.label}
-              </a>
-            ))}
-            <button
-              onClick={() => handleNavClick(onOpenPostJob)}
-              className={`mt-1 px-4 py-3.5 text-left text-sm font-bold text-navy bg-teal/15 transition-all duration-300 ease-out hover:bg-teal/25 active:bg-teal/30 rounded-xl cursor-pointer ${
-                isOpen ? 'translate-x-0 opacity-100' : '-translate-x-3 opacity-0'
-              }`}
-              style={{ transitionDelay: isOpen ? '180ms' : '0ms' }}
-            >
-              + Pasang Lowongan Kerja
-            </button>
-            <button
-              onClick={() => handleNavClick(onOpenAdminLogin)}
-              className={`mt-1 px-4 py-3.5 text-left text-sm font-medium text-slate-700 dark:text-slate-200 transition-all duration-300 ease-out hover:bg-slate-50 dark:hover:bg-slate-800 active:bg-slate-100 rounded-xl cursor-pointer ${
-                isOpen ? 'translate-x-0 opacity-100' : '-translate-x-3 opacity-0'
-              }`}
-              style={{ transitionDelay: isOpen ? '220ms' : '0ms' }}
-            >
-              {isAdmin ? '⚙️ Dashboard Admin' : '🔑 Login Superadmin'}
-            </button>
-          </div>
-        </div>
+        {isOpen && <div className="editorial-mobile-menu flex flex-col gap-1 border-t border-slate-200 py-3 dark:border-slate-800 md:hidden">
+          <a href="#jobs" onClick={closeMenu} className="rounded-lg px-3 py-3 font-semibold">Cari Lowongan</a>
+          <a href="#cv-service" onClick={closeMenu} className="rounded-lg px-3 py-3 font-semibold">Layanan Karier</a>
+          <button type="button" onClick={() => { closeMenu(); onOpenPostJob(); }} className="rounded-lg px-3 py-3 text-left font-semibold">Untuk Perusahaan ↗</button>
+          <button type="button" onClick={() => { closeMenu(); onOpenAdminLogin(); }} className="rounded-lg px-3 py-3 text-left font-semibold">{isAdmin ? 'Dashboard Admin' : 'Masuk'}</button>
+        </div>}
       </div>
     </nav>
   );
 };
 
-const Hero = ({ searchTerm, setSearchTerm, selectedTag, setSelectedTag, landing }) => {
-  const tags = ['Semua', ...publicCategories];
-
+const Hero = ({ searchTerm, setSearchTerm, locationTerm, setLocationTerm, selectedTag, setSelectedTag, landing, activeCount }) => {
   return (
-    <div className="bg-navy text-white py-10 sm:py-16 px-4 text-center relative overflow-hidden">
-      <div className="max-w-4xl mx-auto relative z-10">
-        <span className="bg-teal/15 text-teal text-[10px] sm:text-xs font-semibold px-3 py-1 rounded-full uppercase tracking-wider mb-4 inline-block">Portal Karier & B2B Talent Terpercaya</span>
-        <h1 className="text-2xl sm:text-4xl lg:text-5xl font-extrabold mb-3 sm:mb-4 leading-tight">{landing?.h1 || 'Wujudkan Karier Impianmu Bersama Perusahaan Terbaik'}</h1>
-        <p className="text-slate-300 mb-6 sm:mb-8 max-w-2xl mx-auto text-xs sm:text-sm lg:text-base leading-relaxed">Ribuan lowongan terverifikasi dan layanan optimasi CV profesional siap mengantar kesuksesan kariermu.</p>
-
-        <div className="bg-white p-2 rounded-2xl shadow-xl flex flex-col sm:flex-row gap-2 max-w-2xl mx-auto border border-white/20">
-          <div className="flex items-center flex-1 px-3 py-1 sm:py-2">
-            <Search className="h-5 w-5 text-slate-400 shrink-0 mr-2.5" />
-            <input
-              type="text"
-              value={searchTerm}
-              onChange={(e) => setSearchTerm(e.target.value)}
-              placeholder="Cari posisi, perusahaan, atau lokasi..."
-              className="w-full text-slate-800 placeholder:text-slate-400 focus:outline-none text-xs sm:text-sm bg-transparent py-1.5"
-            />
-          </div>
-          <button
-            type="button"
-            onClick={() => document.getElementById('jobs')?.scrollIntoView({ behavior: 'smooth', block: 'start' })}
-            className="bg-teal hover:bg-teal/90 text-navy font-bold px-6 sm:px-8 py-3 rounded-xl transition text-xs sm:text-sm w-full sm:w-auto shadow-xs active:scale-98 cursor-pointer"
-          >
-            Cari Loker
-          </button>
+    <section id="top" className="editorial-hero px-4 py-8 text-navy">
+      <div className="editorial-container relative mx-auto max-w-7xl">
+        <div className="editorial-hero-heading">
+          <p className="editorial-eyebrow text-xs font-bold uppercase tracking-[0.18em] text-teal">Langkah berikutnya, lebih jelas.</p>
+          <h1 className="editorial-hero-title max-w-2xl text-3xl font-extrabold leading-tight sm:text-5xl">{landing?.h1 || <>Temukan pekerjaan.<br /><span className="text-teal">Tentukan langkahmu.</span></>}</h1>
+          <p className="editorial-hero-description text-sm leading-relaxed text-slate-600">Mulai dari posisi dan kota yang kamu tuju. Baca informasi penting, lalu telusuri sumbernya.</p>
         </div>
-
-        <div className="mt-6 flex flex-wrap justify-center items-center gap-1.5 sm:gap-2 text-[10px] sm:text-xs">
-          <span className="text-slate-400 font-medium mr-1 text-[11px] sm:text-xs">Kategori Populer:</span>
-          {tags.map((tag) => (
-            <button
-              key={tag}
-              onClick={() => setSelectedTag(tag === 'Semua' ? '' : tag)}
-              className={`px-3 py-1.5 rounded-full transition border cursor-pointer active:scale-95 text-[11px] sm:text-xs ${selectedTag === (tag === 'Semua' ? '' : tag) ? 'bg-teal border-teal text-navy font-bold shadow-xs' : 'bg-white/10 border-white/10 text-slate-200 hover:bg-white/20'}`}
-            >
-              {tag}
-            </button>
-          ))}
+        <div className="editorial-search-panel mt-6 grid gap-2 rounded-xl bg-white p-2 shadow-sm sm:grid-cols-[1fr_1fr_auto]">
+          <label className="flex items-center gap-3 rounded-xl border border-slate-200 px-4 py-2 text-left"><Search className="h-5 w-5 shrink-0 text-slate-400" /><span className="flex-1"><span className="block text-[11px] font-bold uppercase tracking-wide text-slate-500">Posisi atau perusahaan</span><input value={searchTerm} onChange={(e) => setSearchTerm(e.target.value)} placeholder="Contoh: IT Engineer, Indofood" className="w-full bg-transparent text-sm text-slate-900 outline-none placeholder:text-slate-400" /></span></label>
+          <label className="flex items-center gap-3 rounded-xl border border-slate-200 px-4 py-2 text-left"><MapPin className="h-5 w-5 shrink-0 text-slate-400" /><span className="flex-1"><span className="block text-[11px] font-bold uppercase tracking-wide text-slate-500">Kota atau kabupaten</span><input value={locationTerm} onChange={(e) => setLocationTerm(e.target.value)} placeholder="Contoh: Medan, Semarang" className="w-full bg-transparent text-sm text-slate-900 outline-none placeholder:text-slate-400" /></span></label>
+          <button type="button" onClick={() => document.getElementById('jobs')?.scrollIntoView({ behavior: 'smooth' })} className="rounded-xl bg-teal px-6 py-3 font-bold text-white hover:bg-teal/90">Cari lowongan</button>
         </div>
+        <div className="editorial-hero-foot mt-4 flex flex-wrap items-center gap-2 text-xs text-slate-600"><span className="h-2 w-2 rounded-full bg-teal" /><strong className="text-navy dark:text-white">{activeCount} lowongan aktif</strong><span aria-hidden="true">/</span><span>Data langsung dari inventori publik saat ini</span></div>
+
       </div>
-    </div>
+    </section>
   );
 };
 
-const StatsBar = ({ totalJobs, totalCompanies, totalApplicants }) => (
-  <div className="bg-white dark:bg-slate-900 border-b border-slate-100 dark:border-slate-800 py-6 sm:py-8 shadow-xs transition-colors">
-    <div className="max-w-7xl mx-auto px-4 grid grid-cols-2 md:grid-cols-4 gap-4 sm:gap-6 text-center">
-      <div className="bg-slate-50/70 dark:bg-slate-800/80 sm:bg-transparent p-3 sm:p-2 rounded-xl border border-slate-100 dark:border-slate-800 sm:border-0">
-        <div className="text-xl sm:text-2xl lg:text-3xl font-extrabold text-navy dark:text-teal">{totalJobs}+</div>
-        <div className="text-slate-500 dark:text-slate-400 text-xs sm:text-sm mt-0.5">Lowongan Aktif</div>
-      </div>
-      <div className="bg-slate-50/70 dark:bg-slate-800/80 sm:bg-transparent p-3 sm:p-2 rounded-xl border border-slate-100 dark:border-slate-800 sm:border-0">
-        <div className="text-xl sm:text-2xl lg:text-3xl font-extrabold text-navy dark:text-teal">{totalCompanies}+</div>
-        <div className="text-slate-500 dark:text-slate-400 text-xs sm:text-sm mt-0.5">Perusahaan Mitra</div>
-      </div>
-      <div className="bg-slate-50/70 dark:bg-slate-800/80 sm:bg-transparent p-3 sm:p-2 rounded-xl border border-slate-100 dark:border-slate-800 sm:border-0">
-        <div className="text-xl sm:text-2xl lg:text-3xl font-extrabold text-navy dark:text-teal">{totalApplicants}+</div>
-        <div className="text-slate-500 dark:text-slate-400 text-xs sm:text-sm mt-0.5">Pencari Kerja Aktif</div>
-      </div>
-      <div className="bg-slate-50/70 dark:bg-slate-800/80 sm:bg-transparent p-3 sm:p-2 rounded-xl border border-slate-100 dark:border-slate-800 sm:border-0">
-        <div className="text-xl sm:text-2xl lg:text-3xl font-extrabold text-navy dark:text-teal">95%</div>
-        <div className="text-slate-500 dark:text-slate-400 text-xs sm:text-sm mt-0.5">Tingkat Kepuasan CV</div>
-      </div>
-    </div>
-  </div>
+const StatsBar = ({ totalJobs }) => (
+  <div className="editorial-inventory-note border-b border-slate-200 bg-white dark:border-slate-800 dark:bg-slate-900"><div className="editorial-container mx-auto max-w-7xl px-4 py-4 text-sm text-slate-600 dark:text-slate-300"><strong className="text-navy dark:text-white">{totalJobs} lowongan aktif tercatat.</strong> Jumlah ini mengikuti inventori publik dan dapat berubah saat data diperbarui.</div></div>
 );
 
-const JobFeed = ({ jobs, onSelectJob, searchTerm, selectedTag, onResetFilters, loading, landing }) => {
+const JobFeed = ({ jobs, onSelectJob, searchTerm, locationTerm, selectedTag, setSelectedTag, onResetFilters, loading, landing }) => {
   const [visibleCount, setVisibleCount] = useState(6);
-
-  const filteredJobs = sortJobsByFeatured(
-    jobs.filter((job) => {
-      // Sembunyikan lowongan tidak aktif dari halaman publik
+  const [selectedTypes, setSelectedTypes] = useState([]);
+  const [sortOrder, setSortOrder] = useState('featured');
+  const [filtersOpen, setFiltersOpen] = useState(() => typeof window !== 'undefined' && window.innerWidth >= 1024);
+  const types = [...new Set(jobs.filter((j) => j.status === 'Aktif').map((j) => displayJobType(j.type)).filter(Boolean))];
+  const filteredJobs = useMemo(() => {
+    const query = (searchTerm || '').toLowerCase().trim(); const place = (locationTerm || '').toLowerCase().trim();
+    const result = jobs.filter((job) => {
       if (job.status !== 'Aktif') return false;
-
-      const search = (searchTerm || '').toLowerCase();
-      const matchesSearch =
-        (job.title && job.title.toLowerCase().includes(search)) ||
-        (job.company && job.company.toLowerCase().includes(search)) ||
-        (job.location && job.location.toLowerCase().includes(search));
-      const matchesTag = !selectedTag || selectedTag === 'Semua' || job.category === selectedTag;
-      return matchesSearch && matchesTag;
-    })
-  );
-
-  useEffect(() => {
-    setVisibleCount(6);
-  }, [searchTerm, selectedTag]);
-
-  const visibleJobs = filteredJobs.slice(0, visibleCount);
-  const hasMore = visibleCount < filteredJobs.length;
-
-  return (
-    <div id="jobs" className="py-10 sm:py-16 max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-      <div className="flex flex-col gap-3 sm:flex-row sm:justify-between sm:items-end mb-6 sm:mb-8">
-        <div>
-          <h2 className="text-xl sm:text-2xl lg:text-3xl font-bold text-navy dark:text-white">{landing ? `Lowongan ${landing.key === 'fresh-graduate' ? 'Fresh Graduate' : 'di ' + landing.location}` : 'Lowongan Kerja Terbaru'}</h2>
-          <p className="text-slate-500 dark:text-slate-400 text-xs sm:text-sm mt-1">Peluang karier pilihan untuk profesional Indonesia</p>
-        </div>
-        <span className="inline-flex self-start sm:self-auto text-xs sm:text-sm font-semibold text-teal bg-teal/10 px-3 py-1 rounded-full">{filteredJobs.length} Lowongan Tersedia</span>
-      </div>
-
-      {loading ? (
-        <JobFeedSkeleton count={6} />
-      ) : filteredJobs.length === 0 ? (
-        <div className="bg-white dark:bg-slate-800 rounded-2xl border border-dashed border-slate-300 dark:border-slate-700 py-12 sm:py-16 text-center shadow-sm px-4">
-          <div className="mx-auto mb-5 flex h-16 w-16 items-center justify-center rounded-full bg-slate-100 dark:bg-slate-700 text-slate-500 dark:text-slate-300 shadow-inner ring-1 ring-slate-200 dark:ring-slate-600">
-            <SearchX className="h-8 w-8" />
-          </div>
-          <h3 className="text-lg sm:text-xl font-bold text-navy dark:text-white">Lowongan tidak ditemukan</h3>
-          <p className="mt-2 text-xs sm:text-sm text-slate-500 dark:text-slate-400 max-w-md mx-auto">Belum ada hasil yang cocok dengan pencarian atau filter saat ini. Coba ubah kata kunci atau reset filter untuk melihat seluruh lowongan aktif.</p>
-          <button
-            onClick={onResetFilters}
-            className="mt-5 inline-flex items-center justify-center rounded-xl bg-navy dark:bg-teal dark:text-navy px-4 py-2.5 text-sm font-bold text-white shadow-sm transition hover:bg-slate-800 dark:hover:bg-teal/90"
-          >
-            Reset Filter
-          </button>
-        </div>
-      ) : (
-        <>
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4 sm:gap-6">
-            {visibleJobs.map((job, index) => {
-              const isFeatured = job.featured || job.is_featured || false;
-              return (
-                <div
-                  key={job.id}
-                  onClick={() => onSelectJob(job)}
-                  className={`group relative flex cursor-pointer flex-col justify-between rounded-xl border bg-white dark:bg-slate-800 p-4 shadow-sm transition-all duration-300 hover:-translate-y-0.5 hover:shadow-lg sm:p-6 ${isFeatured ? 'border-teal ring-1 ring-teal/50' : 'border-slate-200 dark:border-slate-700'}`}
-                  style={{ animationDelay: `${index * 80}ms` }}
-                >
-                  {isFeatured && (
-                    <span className="absolute -top-3 right-4 bg-teal text-navy text-[10px] font-extrabold px-3 py-1 rounded-full uppercase tracking-wider shadow">FEATURED · PENEMPATAN UNGGULAN</span>
-                  )}
-
-                  <div className="mb-4 flex items-start justify-between gap-3">
-                    <div className="min-w-0 flex-1">
-                      <h3 className="mb-1 text-base font-bold text-navy dark:text-white transition group-hover:text-teal sm:text-lg">
-                        <a href={jobPath(job.id)} onClick={(event) => {
-                          event.stopPropagation();
-                          if (event.button === 0 && !event.metaKey && !event.ctrlKey && !event.shiftKey && !event.altKey) {
-                            event.preventDefault();
-                            onSelectJob(job);
-                          }
-                        }}>{job.title}</a>
-                      </h3>
-                      <p className="text-xs font-semibold text-slate-600 dark:text-slate-300 sm:text-sm">{job.company}</p>
-                    </div>
-                    <span className="inline-flex shrink-0 rounded bg-teal/10 px-2.5 py-1 text-[10px] font-bold text-teal sm:text-xs">{job.category}</span>
-                  </div>
-
-                  <div>
-                    <p className="mb-4 text-[11px] text-slate-500 dark:text-slate-400 line-clamp-2 sm:text-xs">{job.desc}</p>
-                  </div>
-                  <div>
-                    <div className="mb-3 flex justify-between gap-2 rounded bg-slate-50 dark:bg-slate-700/50 p-2 text-[11px] font-semibold text-slate-700 dark:text-slate-200 sm:text-xs">
-                      <span>Gaji:</span> <span className="text-right font-bold text-teal">{job.salary}</span>
-                    </div>
-                    <div className="flex items-center justify-between gap-2 text-[11px] sm:text-xs text-slate-600 dark:text-slate-300 mb-3">
-                      <span className="max-w-[60%] truncate rounded-full bg-slate-100 dark:bg-slate-700 px-2.5 py-1 text-slate-600 dark:text-slate-300">{job.location}</span>
-                      <span className="font-bold text-teal">{job.type}</span>
-                    </div>
-                    <div className="flex items-center justify-between border-t border-slate-100 dark:border-slate-700/70 pt-2.5 text-[11px] text-slate-400">
-                      <span className="inline-flex items-center gap-1.5 font-medium text-slate-500 dark:text-slate-400">
-                        <Calendar className="h-3.5 w-3.5 text-teal shrink-0" />
-                        <span>{formatJobDate(job.created_at || job.date)}</span>
-                      </span>
-                      <span className="text-[10px] font-semibold uppercase tracking-wider text-teal group-hover:underline">
-                        Lihat Detail →
-                      </span>
-                    </div>
-                  </div>
-                </div>
-              );
-            })}
-          </div>
-
-          {hasMore && (
-            <div className="mt-8 text-center">
-              <button
-                onClick={() => setVisibleCount((prev) => prev + 6)}
-                className="bg-navy dark:bg-slate-800 hover:bg-navy/90 dark:hover:bg-slate-700 text-white font-bold px-5 sm:px-6 py-3 rounded-xl shadow transition w-full sm:w-auto border border-transparent dark:border-slate-700 cursor-pointer active:scale-98"
-              >
-                Muat Lebih Banyak
-              </button>
-            </div>
-          )}
-        </>
-      )}
-    </div>
-  );
+      const haystack = [job.title, job.company].filter(Boolean).join(' ').toLowerCase();
+      return (!query || haystack.includes(query)) && (!place || String(job.location || '').toLowerCase().includes(place)) && (!selectedTag || job.category === selectedTag) && (!selectedTypes.length || selectedTypes.includes(displayJobType(job.type)));
+    });
+    if (sortOrder === 'latest') return [...result].sort((a, b) => new Date(b.created_at || b.date || 0) - new Date(a.created_at || a.date || 0));
+    if (sortOrder === 'deadline') return [...result].sort((a, b) => { const da = getDeadlineTime(a); const db = getDeadlineTime(b); return (da || Infinity) - (db || Infinity); });
+    return sortJobsByFeatured(result);
+  }, [jobs, searchTerm, locationTerm, selectedTag, selectedTypes, sortOrder]);
+  function getDeadlineTime(job) { const value = job.valid_through ?? job.validThrough ?? job.deadline; const date = value ? new Date(value) : null; return date && !Number.isNaN(date.getTime()) ? date.getTime() : 0; }
+  useEffect(() => setVisibleCount(6), [searchTerm, locationTerm, selectedTag, selectedTypes, sortOrder]);
+  const reset = () => { setSelectedTypes([]); setSortOrder('featured'); onResetFilters(); };
+  return <section id="jobs" className="editorial-jobs editorial-container mx-auto max-w-7xl px-4 py-10 sm:px-6 sm:py-16 lg:px-8">
+    <div className="mb-8 flex flex-col gap-4 border-b border-slate-200 pb-6 dark:border-slate-800 sm:flex-row sm:items-end sm:justify-between"><div><p className="editorial-eyebrow text-xs font-bold uppercase tracking-[0.18em] text-teal">Daftar lowongan</p><h2 className="mt-2 text-2xl font-extrabold text-navy dark:text-white sm:text-3xl">{landing ? `Lowongan ${landing.key === 'fresh-graduate' ? 'Fresh Graduate' : 'di ' + landing.location}` : 'Peluang yang tersedia'}</h2><p className="mt-2 text-sm text-slate-500 dark:text-slate-400">{filteredJobs.length} hasil sesuai pencarian dan filter.</p></div><label className="flex items-center gap-2 text-sm text-slate-600 dark:text-slate-300"><ArrowUpDown className="h-4 w-4" /><span>Urutkan</span><select value={sortOrder} onChange={(e) => setSortOrder(e.target.value)} className="rounded-lg border border-slate-300 bg-white px-3 py-2 font-semibold dark:border-slate-700 dark:bg-slate-900"><option value="featured">Unggulan terlebih dahulu</option><option value="latest">Terbaru</option><option value="deadline">Batas waktu terdekat</option></select></label></div>
+    <div className="grid gap-8 lg:grid-cols-[220px_1fr]"><aside className="editorial-filter h-fit rounded-xl border border-slate-200 bg-white p-4 dark:border-slate-800 dark:bg-slate-900"><details open={filtersOpen} onToggle={(e) => setFiltersOpen(e.currentTarget.open)}><summary className="flex items-center justify-between gap-2 font-bold text-navy dark:text-white"><span>Filter lowongan</span><SlidersHorizontal className="h-4 w-4 text-teal" /></summary><label className="mt-4 block text-xs font-bold uppercase tracking-wide text-slate-500">Bidang pekerjaan<select value={selectedTag} onChange={(e) => setSelectedTag(e.target.value)} className="mt-2 w-full rounded-lg border border-slate-300 bg-white px-2 py-2 text-sm font-normal dark:border-slate-700 dark:bg-slate-800"><option value="">Semua bidang</option>{publicCategories.map((cat) => <option key={cat}>{cat}</option>)}</select></label><fieldset className="mt-5"><legend className="text-xs font-bold uppercase tracking-wide text-slate-500">Jenis pekerjaan</legend><div className="mt-2 space-y-2">{types.map((type) => <label key={type} className="flex items-center gap-2 text-sm text-slate-700 dark:text-slate-300"><input type="checkbox" checked={selectedTypes.includes(type)} onChange={(e) => setSelectedTypes((current) => e.target.checked ? [...current, type] : current.filter((item) => item !== type))} />{type}</label>)}</div></fieldset><button type="button" onClick={reset} className="mt-5 text-sm font-bold text-teal hover:underline">Reset filter & pencarian</button></details></aside>
+      <div><p className="mb-4 text-xs leading-relaxed text-slate-600 dark:text-slate-300">Gaji dan batas waktu mengikuti field data lowongan. Jika belum dicantumkan di sini, periksa deskripsi dan sumber sebelum melamar.</p>{loading ? <JobFeedSkeleton count={6} /> : filteredJobs.length === 0 ? <div className="editorial-empty rounded-xl border border-dashed border-slate-300 px-6 py-16 text-center dark:border-slate-700"><SearchX className="mx-auto h-10 w-10 text-slate-400" /><h3 className="mt-4 text-xl font-bold text-navy dark:text-white">Lowongan tidak ditemukan</h3><p className="mx-auto mt-2 max-w-md text-sm text-slate-500">Coba ubah kata kunci atau reset filter untuk melihat seluruh lowongan aktif.</p><button type="button" onClick={reset} className="mt-5 rounded-lg bg-navy px-4 py-2.5 text-sm font-bold text-white dark:bg-teal dark:text-white">Reset filter</button></div> : <><div className="editorial-job-list divide-y divide-slate-200 border-y border-slate-200 dark:divide-slate-800 dark:border-slate-800">{filteredJobs.slice(0, visibleCount).map((job) => { const featured = Boolean(job.featured || job.is_featured); const source = displaySource(job); return <article key={job.id} className={`editorial-job-card group cursor-pointer py-6 first:pt-2 ${featured ? 'editorial-job-card--featured' : ''}`} onClick={() => onSelectJob(job)}><div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between"><div className="min-w-0"><div className="flex flex-wrap items-center gap-2"><h3 className="text-xl font-bold leading-tight text-navy group-hover:text-teal dark:text-white">{job.title}</h3>{featured && <span className="rounded-full bg-teal px-2 py-1 text-[10px] font-extrabold uppercase tracking-wide text-white">FEATURED · PENEMPATAN UNGGULAN</span>}</div><p className="mt-1 font-semibold text-slate-700 dark:text-slate-300">{job.company}</p><div className="mt-3 flex flex-wrap gap-x-4 gap-y-1 text-sm text-slate-500 dark:text-slate-400"><span className="inline-flex items-center gap-1"><MapPin className="h-4 w-4 text-teal" />{job.location || 'Lokasi tidak dicantumkan'}</span><span>{displayJobType(job.type)}</span></div></div><a href={jobPath(job.id)} onClick={(e) => { e.preventDefault(); e.stopPropagation(); onSelectJob(job); }} className="shrink-0 text-sm font-semibold text-teal">Lihat detail →<span className="sr-only"> {job.title}</span></a></div><div className="mt-4 flex flex-wrap gap-x-5 gap-y-2 text-sm"><span><b className="text-slate-500">Gaji</b><br /><strong className="text-slate-800 dark:text-white">{displaySalary(job.salary)}</strong></span><span><b className="text-slate-500">Batas waktu</b><br /><strong className="text-slate-800 dark:text-white">{displayDeadline(job, formatJobDate)}</strong></span></div><div className="editorial-source-meta mt-4 flex flex-wrap items-center gap-x-4 gap-y-1 border-t border-slate-100 pt-3 text-xs text-slate-500 dark:border-slate-800 dark:text-slate-400"><span>Sumber: {source !== 'LokerResmi · detail lowongan' ? <a href={source} target="_blank" rel="noopener noreferrer" onClick={(e) => e.stopPropagation()} className="font-semibold text-teal hover:underline">Situs sumber <ExternalLink className="inline h-3 w-3" /></a> : source}</span><span>Terdaftar {displayDate(job, formatJobDate)}</span></div></article>; })}</div>{visibleCount < filteredJobs.length && <button type="button" onClick={() => setVisibleCount((n) => n + 6)} className="mt-8 rounded-lg bg-navy px-5 py-3 font-bold text-white dark:bg-slate-800">Muat lebih banyak</button>}</>}</div></div>
+  </section>;
 };
 
 const CVServicePromo = ({ onSelectPackage, onOpenAIChecker, onOpenCoverLetter }) => {
@@ -374,13 +145,13 @@ const CVServicePromo = ({ onSelectPackage, onOpenAIChecker, onOpenCoverLetter })
             Buat CV ATS-Friendly & Optimasi LinkedIn
           </h2>
           <p className="text-slate-300 text-xs sm:text-sm md:text-base mb-6 leading-relaxed">
-            Sering ditolak sistem ATS perusahaan? Tingkatkan peluang lolos seleksi HR hingga 3x lipat dengan format CV standar industri.
+            Susun CV yang mudah dibaca sistem ATS dengan format yang rapi dan bahasa profesional.
           </p>
           <div className="flex flex-col sm:flex-row items-center justify-center gap-3">
             <button
               type="button"
               onClick={onOpenAIChecker}
-              className="bg-teal hover:bg-teal/95 active:bg-teal text-navy font-bold px-5 py-3.5 sm:py-3 rounded-xl shadow-xs transition w-full sm:w-auto text-xs sm:text-sm cursor-pointer active:scale-98 inline-flex items-center justify-center gap-2"
+              className="bg-teal hover:bg-teal/95 active:bg-teal text-white font-bold px-5 py-3.5 sm:py-3 rounded-xl shadow-xs transition w-full sm:w-auto text-xs sm:text-sm cursor-pointer active:scale-98 inline-flex items-center justify-center gap-2"
             >
               <Sparkles className="h-4 w-4" />
               <span>Cek Skor CV dengan AI (Gratis)</span>
@@ -422,7 +193,7 @@ const CVServicePromo = ({ onSelectPackage, onOpenAIChecker, onOpenCoverLetter })
 
           {/* Tier 2: Paket Profesional (Populer) */}
           <div className="order-1 md:order-2 min-w-0 bg-white/15 backdrop-blur-md p-5 sm:p-6 rounded-2xl border-2 border-teal relative flex flex-col justify-between shadow-xl transition hover:border-teal/80">
-            <div className="absolute -top-3 right-5 bg-teal text-navy text-[10px] sm:text-xs font-black px-3 py-0.5 rounded-full uppercase tracking-wider shadow-sm">
+            <div className="absolute -top-3 right-5 bg-teal text-white text-[10px] sm:text-xs font-black px-3 py-0.5 rounded-full uppercase tracking-wider shadow-sm">
               Populer
             </div>
             <div>
@@ -431,7 +202,7 @@ const CVServicePromo = ({ onSelectPackage, onOpenAIChecker, onOpenCoverLetter })
               </div>
               <div className="text-teal font-extrabold text-2xl sm:text-3xl mb-4">Rp 99.000</div>
               <ul className="space-y-2.5 text-xs sm:text-sm text-slate-100 mb-6">
-                <li className="flex items-start gap-2"><span className="text-teal font-bold">✓</span><span>Format ATS Teruji & Lolos HR</span></li>
+                <li className="flex items-start gap-2"><span className="text-teal font-bold">✓</span><span>Format ATS yang terstruktur</span></li>
                 <li className="flex items-start gap-2"><span className="text-teal font-bold">✓</span><span>Redaksi Bahasa Profesional & SEO</span></li>
                 <li className="flex items-start gap-2"><span className="text-teal font-bold">✓</span><span>Konsultasi & Revisi Tanpa Batas</span></li>
               </ul>
@@ -439,7 +210,7 @@ const CVServicePromo = ({ onSelectPackage, onOpenAIChecker, onOpenCoverLetter })
             <button
               type="button"
               onClick={() => onSelectPackage('Paket Profesional (Rp 99.000)')}
-              className="w-full bg-teal hover:bg-teal/90 active:bg-teal text-navy font-black py-2.5 sm:py-3 rounded-xl transition cursor-pointer text-xs sm:text-sm active:scale-98 shadow-sm"
+              className="w-full bg-teal hover:bg-teal/90 active:bg-teal text-white font-black py-2.5 sm:py-3 rounded-xl transition cursor-pointer text-xs sm:text-sm active:scale-98 shadow-sm"
             >
               Pilih Paket
             </button>
@@ -455,7 +226,7 @@ const CVServicePromo = ({ onSelectPackage, onOpenAIChecker, onOpenCoverLetter })
               <ul className="space-y-2.5 text-xs sm:text-sm text-slate-200 mb-6">
                 <li className="flex items-start gap-2"><span className="text-teal font-bold">✓</span><span>Semua di Paket Pro</span></li>
                 <li className="flex items-start gap-2"><span className="text-teal font-bold">✓</span><span>Simulasi Interview HR</span></li>
-                <li className="flex items-start gap-2"><span className="text-teal font-bold">✓</span><span>Prioritas Rekomendasi Loker B2B</span></li>
+                <li className="flex items-start gap-2"><span className="text-teal font-bold">✓</span><span>Dukungan persiapan karier</span></li>
               </ul>
             </div>
             <button
@@ -476,19 +247,20 @@ const CommunitySection = () => (
   <div id="community" className="py-8 sm:py-12 max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 text-center">
     <div className="bg-teal/10 border border-teal/20 rounded-2xl p-6 sm:p-12 shadow-xs">
       <h2 className="text-xl sm:text-3xl font-bold text-navy mb-2 sm:mb-3">Gabung Komunitas Loker Resmi (Lokerresmi.id)</h2>
-      <p className="text-slate-600 max-w-xl mx-auto mb-5 sm:mb-6 text-xs sm:text-sm leading-relaxed">Dapatkan info lowongan kerja pilihan setiap hari langsung di handphone-mu tanpa ketinggalan.</p>
-      <a href="https://chat.whatsapp.com/E00jf6uXmuF742oQjkvn39?s=cl&p=a&mlu=4" target="_blank" rel="noopener noreferrer" className="bg-teal hover:bg-teal/90 active:bg-teal text-navy font-bold px-6 sm:px-8 py-3.5 sm:py-3 rounded-xl shadow-xs transition inline-block w-full sm:w-auto text-xs sm:text-sm cursor-pointer active:scale-98">Gabung Grup Komunitas Loker</a>
+      <p className="text-slate-600 max-w-xl mx-auto mb-5 sm:mb-6 text-xs sm:text-sm leading-relaxed">Ikuti kanal komunitas untuk membaca pembaruan lowongan dan informasi karier.</p>
+      <a href="https://chat.whatsapp.com/E00jf6uXmuF742oQjkvn39?s=cl&p=a&mlu=4" target="_blank" rel="noopener noreferrer" className="bg-teal hover:bg-teal/90 active:bg-teal text-white font-bold px-6 sm:px-8 py-3.5 sm:py-3 rounded-xl shadow-xs transition inline-block w-full sm:w-auto text-xs sm:text-sm cursor-pointer active:scale-98">Gabung Grup Komunitas Loker</a>
     </div>
   </div>
 );
 
 const Footer = ({ onOpenEmployerInquiry }) => (
   <footer className="bg-navy text-white pt-12 pb-6 border-t border-slate-800">
+    <nav aria-label="Jelajahi lowongan" className="mx-auto mb-8 flex max-w-7xl flex-wrap justify-center gap-4 px-4 text-sm text-slate-200"><a href="/lowongan-kerja/medan" className="hover:underline">Loker Medan</a><a href="/lowongan-admin/medan" className="hover:underline">Admin Medan</a><a href="/lowongan-fresh-graduate" className="hover:underline">Fresh Graduate</a><a href="#community" className="hover:underline">Komunitas</a></nav>
     <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 text-center">
       <div className="inline-block bg-white/5 px-4 py-2 rounded-xl mb-2">
         <span className="text-lg font-bold tracking-[0.2em] uppercase text-white">LOKERRESMI.ID</span>
       </div>
-      <p className="text-slate-400 text-sm mb-5 max-w-lg mx-auto">Peluang Karier Resmi & Terverifikasi • Platform Informasi Lowongan Kerja & B2B Talent Terpercaya.</p>
+      <p className="text-slate-400 text-sm mb-5 max-w-lg mx-auto">Informasi lowongan kerja dan layanan karier LokerResmi.id.</p>
 
       <button type="button" onClick={onOpenEmployerInquiry} className="mb-5 min-h-[44px] rounded-xl border border-teal/40 px-5 py-3 text-sm font-bold text-teal hover:bg-white/10 transition">
         Untuk Perusahaan
@@ -603,19 +375,19 @@ const JobDetailModal = ({ job, onClose, onApplyTrack, onOpenCoverLetter }) => {
           <div className="flex items-center gap-1.5 sm:gap-2 flex-wrap">
             <span className="text-[10px] sm:text-xs font-bold text-teal bg-teal/10 px-2.5 sm:px-3 py-1 rounded-full">{job.category}</span>
             {(job.featured || job.is_featured) && (
-              <span className="text-[10px] sm:text-xs font-extrabold text-navy bg-teal px-2.5 py-0.5 rounded-full uppercase tracking-wider shadow-xs">🔥 PREMIUM</span>
+              <span className="text-[10px] sm:text-xs font-extrabold text-white bg-teal px-2.5 py-0.5 rounded-full uppercase tracking-wider shadow-xs">Penempatan unggulan</span>
             )}
           </div>
           <span className="inline-flex items-center gap-1.5 text-[11px] sm:text-xs text-slate-500 dark:text-slate-400 bg-slate-50 dark:bg-slate-800 border border-slate-200/70 dark:border-slate-700 px-2.5 py-1 rounded-full shadow-xs">
             <Calendar className="h-3.5 w-3.5 text-teal shrink-0" />
-            <span>Dipasang: {formatJobDate(job.created_at || job.date)}</span>
+            <span>Terdaftar: {displayDate(job, formatJobDate)}</span>
           </span>
         </div>
         <h2 id="job-detail-title" className="text-xl sm:text-2xl font-bold text-navy dark:text-white mt-1 mb-1 leading-snug">{job.title}</h2>
         <p className="text-slate-600 dark:text-slate-300 font-semibold mb-3 sm:mb-4 text-xs sm:text-sm md:text-base">{job.company} • {job.location}</p>
         <div className="bg-slate-50 dark:bg-slate-800/80 p-3 sm:p-4 rounded-xl mb-4 text-xs sm:text-sm space-y-2 border border-slate-100 dark:border-slate-700">
-          <div className="flex justify-between gap-3 text-slate-700 dark:text-slate-200"><strong>Kisaran Gaji:</strong> <span className="text-teal font-bold text-right">{job.salary}</span></div>
-          <div className="flex justify-between gap-3 text-slate-700 dark:text-slate-200"><strong>Tipe Pekerjaan:</strong> <span className="text-right">{job.type}</span></div>
+          <div className="flex justify-between gap-3 text-slate-700 dark:text-slate-200"><strong>Kisaran Gaji:</strong> <span className="text-teal font-bold text-right">{displaySalary(job.salary)}</span></div>
+          <div className="flex justify-between gap-3 text-slate-700 dark:text-slate-200"><strong>Tipe Pekerjaan:</strong> <span className="text-right">{displayJobType(job.type)}</span></div>
         </div>
         <h3 className="font-bold text-navy dark:text-white mb-1.5 text-xs sm:text-sm md:text-base">Deskripsi Pekerjaan:</h3>
         <p className="text-slate-600 dark:text-slate-300 text-xs sm:text-sm mb-4 leading-relaxed">{job.desc}</p>
@@ -645,7 +417,7 @@ const JobDetailModal = ({ job, onClose, onApplyTrack, onOpenCoverLetter }) => {
         <button onClick={handleApply} className={`${buttonClass} text-xs sm:text-sm md:text-base min-h-[46px]`}>
           KIRIM LAMARAN
         </button>
-        <button type="button" onClick={() => onOpenCoverLetter(job)} className="mt-3 w-full min-h-[46px] border border-teal rounded-xl px-4 py-3 text-xs sm:text-sm font-bold text-navy dark:text-teal hover:bg-teal/10 transition inline-flex items-center justify-center gap-2">
+        <button type="button" onClick={() => onOpenCoverLetter(job)} className="mt-3 w-full min-h-[46px] border border-teal rounded-xl px-4 py-3 text-xs sm:text-sm font-bold text-teal dark:text-teal hover:bg-teal/10 transition inline-flex items-center justify-center gap-2">
           <FileText className="h-4 w-4 shrink-0" />
           Buat Surat Lamaran AI untuk Posisi Ini
         </button>
@@ -757,7 +529,7 @@ const OrderCVModal = ({ isOpen, onClose, onSubmitOrder, selectedPackage = 'Paket
           <button
             type="submit"
             disabled={submitting}
-            className="w-full bg-teal hover:bg-teal/90 active:bg-teal/95 disabled:opacity-60 text-navy font-bold py-3.5 rounded-xl shadow-xs transition cursor-pointer min-h-[46px] active:scale-98 mt-2 flex items-center justify-center gap-2"
+            className="w-full bg-teal hover:bg-teal/90 active:bg-teal/95 disabled:opacity-60 text-white font-bold py-3.5 rounded-xl shadow-xs transition cursor-pointer min-h-[46px] active:scale-98 mt-2 flex items-center justify-center gap-2"
           >
             {submitting && <span className="inline-block h-4 w-4 animate-spin rounded-full border-2 border-navy border-t-transparent" />}
             <span>{submitting ? 'Memproses Pesanan...' : 'Kirim Pesanan Sekarang'}</span>
@@ -871,7 +643,7 @@ const PostJobModal = ({ isOpen, onClose, onAddJob, isAdminMode = false }) => {
             <div><label className="block font-semibold text-slate-700 mb-1">Tujuan (No WA / Email / Link)</label><input required value={applyTarget} onChange={e => setApplyTarget(e.target.value)} className="w-full border border-slate-300 p-2.5 sm:p-3 rounded-xl focus:ring-2 focus:ring-teal outline-none" placeholder="0812xxxx atau hr@mail.com" /></div>
           </div>
 
-          <button type="submit" className="w-full bg-teal hover:bg-teal/90 active:bg-teal/95 text-navy font-bold py-3.5 rounded-xl shadow-xs mt-2 cursor-pointer active:scale-98 min-h-[46px]">
+          <button type="submit" className="w-full bg-teal hover:bg-teal/90 active:bg-teal/95 text-white font-bold py-3.5 rounded-xl shadow-xs mt-2 cursor-pointer active:scale-98 min-h-[46px]">
             {isAdminMode ? 'Simpan & Tayangkan Lowongan' : 'Kirim & Konfirmasi ke WhatsApp Admin'}
           </button>
         </form>
@@ -955,7 +727,7 @@ const EditJobModal = ({ job, onClose, onSave }) => {
             <div><label className="block font-semibold text-slate-700 mb-1">Metode Lamaran</label><select value={applyType} onChange={e => setApplyType(e.target.value)} className="w-full border border-slate-300 p-2.5 sm:p-3 rounded-xl focus:ring-2 focus:ring-teal outline-none"><option value="whatsapp">WhatsApp</option><option value="email">Email</option><option value="gform">Google Form / URL</option></select></div>
             <div><label className="block font-semibold text-slate-700 mb-1">Target Tujuan</label><input value={applyTarget} onChange={e => setApplyTarget(e.target.value)} className="w-full border border-slate-300 p-2.5 sm:p-3 rounded-xl focus:ring-2 focus:ring-teal outline-none" /></div>
           </div>
-          <button type="submit" className="w-full bg-teal hover:bg-teal/90 active:bg-teal/95 text-navy font-bold py-3.5 rounded-xl shadow-xs cursor-pointer active:scale-98 min-h-[46px]">Simpan Perubahan</button>
+          <button type="submit" className="w-full bg-teal hover:bg-teal/90 active:bg-teal/95 text-white font-bold py-3.5 rounded-xl shadow-xs cursor-pointer active:scale-98 min-h-[46px]">Simpan Perubahan</button>
         </form>
       </div>
     </div>
@@ -1101,7 +873,7 @@ const SuperAdminDashboard = ({
     <div className="min-h-screen bg-slate-100 flex flex-col">
       <div className="bg-navy text-white px-4 sm:px-6 py-3 sm:py-4 flex justify-between items-center shadow flex-wrap gap-2">
         <div className="flex items-center space-x-2.5 sm:space-x-3">
-          <span className="bg-teal text-navy font-extrabold px-2.5 py-1 rounded text-xs uppercase tracking-wider">Superadmin</span>
+          <span className="bg-teal text-white font-extrabold px-2.5 py-1 rounded text-xs uppercase tracking-wider">Superadmin</span>
           <h1 className="text-sm sm:text-base lg:text-lg font-bold">Lokerresmi.id Control Center</h1>
         </div>
         <div className="flex items-center space-x-4">
@@ -1148,7 +920,7 @@ const SuperAdminDashboard = ({
                     className={`inline-flex items-center gap-1 text-[10px] font-bold px-2 py-0.5 rounded-full border ${
                       isStatsLive
                         ? 'bg-emerald-50 text-emerald-700 border-emerald-200'
-                        : 'bg-teal/10 text-navy border-teal/30'
+                        : 'bg-teal/10 text-white border-teal/30'
                     }`}
                     title="Terhubung ke Supabase tabel site_stats"
                   >
@@ -1223,7 +995,7 @@ const SuperAdminDashboard = ({
               </div>
               <button
                 onClick={() => setIsAddJobOpen(true)}
-                className="bg-teal hover:bg-teal/90 active:bg-teal/95 text-navy font-bold px-4 py-2.5 rounded-xl text-xs shadow-xs transition flex items-center justify-center gap-1.5 cursor-pointer w-full sm:w-auto active:scale-98"
+                className="bg-teal hover:bg-teal/90 active:bg-teal/95 text-white font-bold px-4 py-2.5 rounded-xl text-xs shadow-xs transition flex items-center justify-center gap-1.5 cursor-pointer w-full sm:w-auto active:scale-98"
               >
                 <span className="text-base leading-none font-extrabold">+</span>
                 <span>Tambah Lowongan Baru</span>
@@ -1457,6 +1229,7 @@ export default function JobBoard() {
     recordPageView,
   } = useSiteStats();
   const [searchTerm, setSearchTerm] = useState('');
+  const [locationTerm, setLocationTerm] = useState('');
   const [selectedTag, setSelectedTag] = useState('');
   const [selectedPackage, setSelectedPackage] = useState('Paket Profesional (Rp 99.000)');
 
@@ -1572,21 +1345,20 @@ export default function JobBoard() {
           isDark={isDark}
           toggleDarkMode={toggleDarkMode}
         />
-        <Hero searchTerm={searchTerm} setSearchTerm={setSearchTerm} selectedTag={selectedTag} setSelectedTag={setSelectedTag} landing={landing} />
-        <StatsBar
-          totalJobs={publicJobs.length}
-          totalCompanies={new Set(publicJobs.map(job => (job.company || '').trim()).filter(Boolean)).size}
-          totalApplicants={publicJobs.reduce((sum, job) => sum + (job.applicantsCount || 0), 0)}
-        />
+        <Hero activeCount={publicJobs.length} searchTerm={searchTerm} setSearchTerm={setSearchTerm} locationTerm={locationTerm} setLocationTerm={setLocationTerm} selectedTag={selectedTag} setSelectedTag={setSelectedTag} landing={landing} />
+        <StatsBar totalJobs={publicJobs.length} />
         <JobFeed
           jobs={landingJobs}
           onSelectJob={openJob}
           searchTerm={searchTerm}
+          locationTerm={locationTerm}
           selectedTag={selectedTag}
+          setSelectedTag={setSelectedTag}
           loading={loading}
           landing={landing}
           onResetFilters={() => {
             setSearchTerm('');
+            setLocationTerm('');
             setSelectedTag('');
           }}
         />
@@ -1608,7 +1380,7 @@ export default function JobBoard() {
             <p className="my-4 text-slate-600 dark:text-slate-300">
               {loading ? 'Mohon tunggu sebentar.' : jobsError ? 'Silakan muat ulang halaman untuk mencoba lagi.' : 'Lowongan ini tidak tersedia atau sudah tidak aktif.'}
             </p>
-            <button onClick={closeJob} className="bg-teal text-navy font-bold px-4 py-2 rounded-xl">Kembali ke daftar lowongan</button>
+            <button onClick={closeJob} className="bg-teal text-white font-bold px-4 py-2 rounded-xl">Kembali ke daftar lowongan</button>
           </section>
         </div>
       )}

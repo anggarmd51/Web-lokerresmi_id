@@ -7,9 +7,12 @@ export default {
   ],
   theme: {
     extend: {
+      fontFamily: {
+        sans: ['Inter', 'system-ui', '-apple-system', 'BlinkMacSystemFont', 'Segoe UI', 'sans-serif'],
+      },
       colors: {
         navy: '#1E2B45',
-        teal: '#00D2B8',
+        teal: '#0F766E',
         light: '#F8FAFC'
       }
     },

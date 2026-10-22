@@ -46,13 +46,13 @@ export function updatePageMetadata(job, route, { loading = false, error = false,
     : landing ? landing.title
     : route.isDetail || route.invalid
       ? loading ? 'Memuat lowongan | Lokerresmi.id' : error ? 'Lowongan belum dapat dimuat | Lokerresmi.id' : 'Lowongan tidak ditemukan | Lokerresmi.id'
-      : 'Lokerresmi.id - Portal Lowongan Kerja Terverifikasi, CV ATS & Karier Terpercaya';
+      : 'Lokerresmi.id - Lowongan Kerja & Layanan Karier';
   const description = job
     ? [job.title, job.company, job.location, job.salary, job.desc].filter(Boolean).join(' • ').slice(0, 300)
     : landing ? landing.description
     : route.isDetail || route.invalid
       ? 'Lihat lowongan aktif lainnya di Lokerresmi.id.'
-      : 'Temukan ribuan lowongan kerja terbaru, tips karier profesional, layanan pembuatan CV ATS, dan peluang magang terbaik di Indonesia.';
+      : 'Telusuri lowongan berdasarkan posisi, perusahaan, dan lokasi. Periksa informasi serta sumber lowongan, dan temukan layanan CV ATS di Lokerresmi.id.';
   const url = route.isDetail && route.id && !route.invalid ? jobUrl(route.id) : landing ? `${SITE_URL}${landing.path}` : `${SITE_URL}/`;
   const image = `${SITE_URL}/logo_og.png`;
   document.title = title;

@@ -1,3 +1,142 @@
+@font-face {
+  font-family: 'Inter';
+  src: url('/fonts/inter-latin.woff2') format('woff2');
+  font-style: normal;
+  font-weight: 100 900;
+  font-display: swap;
+}
+
 @tailwind base;
 @tailwind components;
 @tailwind utilities;
+
+@layer base {
+  :root {
+    --navy: #1E2B45;
+    --teal: #0F766E;
+    --editorial-canvas: #F8FAFC;
+    --editorial-warm: #F7F6F2;
+  }
+  html { scroll-behavior: smooth; scroll-padding-top: 100px; }
+  body {
+    @apply font-sans text-slate-800 bg-white antialiased;
+    font-size: 16px;
+    line-height: 1.6;
+  }
+  h1, h2, h3 { color: var(--navy); letter-spacing: -0.025em; }
+  button, input, select, textarea { font: inherit; }
+  button, a, input, select, textarea, summary { -webkit-tap-highlight-color: transparent; }
+  button:focus-visible, a:focus-visible, input:focus-visible,
+  select:focus-visible, textarea:focus-visible, summary:focus-visible {
+    outline: 3px solid var(--teal);
+    outline-offset: 4px;
+  }
+  .dark body { @apply bg-slate-950 text-slate-200; }
+  .dark h1, .dark h2, .dark h3 { color: #F1F5F9; }
+}
+
+/* Solid teal actions always use white, including legacy business modals. */
+.bg-teal { color: #FFFFFF; }
+.dark .dark\:bg-teal { color: #FFFFFF; }
+/* Mint is reserved for readable accents on dark surfaces, not light-mode actions. */
+.dark .text-teal, .dark .dark\:text-teal,
+.bg-navy .text-teal { color: #7DD3C7; }
+.dark .bg-teal.text-teal { color: #FFFFFF; }
+
+@media (prefers-reduced-motion: reduce) {
+  html { scroll-behavior: auto; }
+  *, *::before, *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+    scroll-behavior: auto !important;
+  }
+}
+
+/* Editorial Career Platform: layout shared by production data and existing flows. */
+.editorial-container { max-width: 1184px; }
+.editorial-nav > .editorial-container > div:first-child { min-height: 88px; }
+.editorial-brand { text-decoration: none; white-space: nowrap; gap: 10px; }
+.editorial-wordmark { color: var(--navy); font-size: 23px; font-weight: 750; letter-spacing: -1px; }
+.editorial-wordmark > span { color: var(--teal); }
+.editorial-nav-link { min-height: 44px; display: inline-flex; align-items: center; font-weight: 550; }
+.editorial-company-nav { margin-left: 24px; padding-left: 28px; border-left: 1px solid #E2E8F0; }
+.editorial-login { padding: 0 18px; border: 1px solid #CBD5E1; border-radius: 7px; }
+.editorial-theme-toggle { min-width: 44px; min-height: 44px; display: flex; justify-content: center; align-items: center; }
+.editorial-hero { background: var(--editorial-warm); border-bottom: 1px solid #E2E8F0; }
+.editorial-hero-heading { display: grid; grid-template-columns: minmax(0,1fr) minmax(260px,390px); gap: 12px 64px; align-items: center; }
+.editorial-hero-heading > .editorial-eyebrow { grid-column: 1/-1; font-size: 11px; color: #475569; margin-bottom: 2px; }
+.editorial-hero-title { font-size: 42px; font-weight: 650; letter-spacing: -1.7px; line-height: 1.16; }
+.editorial-hero-description { font-size: 15px; line-height: 1.85; }
+.editorial-search-panel { border: 1px solid #CBD5E1; border-radius: 10px; }
+.editorial-search-panel > label { border: 0; border-radius: 0; min-width: 0; padding: 4px 16px; }
+.editorial-search-panel > label:nth-child(2) { border-left: 1px solid #E2E8F0; }
+.editorial-search-panel label > span { min-width: 0; }
+.editorial-search-panel label span > span { color: var(--navy); font-size: 12px; font-weight: 650; text-transform: none; letter-spacing: 0; }
+.editorial-search-panel input { min-height: 32px; font-size: 14px; }
+.editorial-search-panel input::placeholder { color: #64748B; }
+.editorial-search-panel button { border-radius: 7px; min-height: 48px; font-size: 14px; font-weight: 650; padding-inline: 24px; }
+.editorial-inventory-note { display: none; }
+.editorial-jobs { padding-top: 38px; padding-bottom: 44px; }
+.editorial-jobs > div:first-child { margin-bottom: 24px; padding-bottom: 0; border: 0; }
+.editorial-jobs h2 { font-size: 27px; font-weight: 650; }
+.editorial-jobs > div:first-child select { max-width: 100%; font-size: 12px; font-weight: 500; }
+.editorial-filter { padding: 20px; }
+.editorial-filter label, .editorial-filter legend { text-transform: none; letter-spacing: 0; font-size: 12px; color: #475569; }
+.editorial-filter input { accent-color: var(--teal); width: 16px; height: 16px; }
+.editorial-filter fieldset label { min-height: 36px; font-size: 13px; }
+.editorial-filter button { min-height: 44px; text-align: left; font-size: 12px; }
+.editorial-job-list { display: flex; flex-direction: column; gap: 14px; border: 0; }
+.editorial-job-card, .editorial-job-card:first-child { background: white; padding: 23px 24px 14px; border: 1px solid #E2E8F0; border-radius: 12px; }
+.editorial-job-card:hover { border-color: #99B5B2; }
+.editorial-job-card--featured { border-color: var(--teal); }
+.editorial-job-card h3 { font-size: 19px; font-weight: 650; line-height: 1.42; }
+.editorial-job-card p { font-size: 14px; font-weight: 500; color: #475569; }
+.editorial-job-card .text-sm { font-size: 12px; }
+.editorial-job-card b, .editorial-job-card strong { font-weight: 500; }
+.editorial-source-meta { font-size: 11px; overflow-wrap: anywhere; }
+.editorial-empty { background: white; }
+.dark .editorial-wordmark { color: #F1F5F9; }
+.dark .editorial-wordmark > span { color: #7DD3C7; }
+.dark .editorial-hero { background: #172337; border-color: #334155; }
+.dark .editorial-hero-description, .dark .editorial-hero-foot, .dark .editorial-eyebrow { color: #CBD5E1; }
+.dark .editorial-hero-foot strong { color: white; }
+.dark .editorial-search-panel { background: #1E293B; border-color: #475569; }
+.dark .editorial-search-panel input, .dark .editorial-search-panel label span > span { color: #F1F5F9; }
+.dark .editorial-search-panel input::placeholder { color: #CBD5E1; }
+.dark .editorial-search-panel > label:nth-child(2) { border-color: #475569; }
+.dark .editorial-job-card, .dark .editorial-empty { background: #0F172A; border-color: #334155; }
+.dark .editorial-job-card p, .dark .editorial-filter label, .dark .editorial-filter legend { color: #CBD5E1; }
+.dark .editorial-company-nav { border-color: #475569; }
+@media (max-width:1100px) {
+  .editorial-nav-link { font-size: 12px; }
+  .editorial-company-nav { margin-left: 0; padding-left: 16px; }
+  .editorial-nav .md\:flex { gap: 18px; }
+}
+@media (max-width:767px) {
+  .editorial-nav > .editorial-container > div:first-child { min-height: 76px; }
+  .editorial-wordmark { font-size: 20px; }
+  .editorial-brand { gap: 8px; }
+  .editorial-brand img { height: 30px; }
+  .editorial-nav .md\:hidden button { min-height: 44px; min-width: 44px; }
+  .editorial-hero-heading { grid-template-columns: 1fr; gap: 14px; }
+  .editorial-hero-title { font-size: 34px; letter-spacing: -1px; }
+  .editorial-hero-description { font-size: 13px; max-width: 420px; }
+  .editorial-search-panel { grid-template-columns: 1fr; }
+  .editorial-search-panel > label { padding: 8px 10px; }
+  .editorial-search-panel > label:nth-child(2) { border-left: 0; border-top: 1px solid #E2E8F0; }
+  .editorial-jobs { padding-top: 28px; }
+  .editorial-jobs > div:first-child { gap: 16px; }
+  .editorial-jobs > div:first-child > label { flex-wrap: wrap; }
+  .editorial-job-card, .editorial-job-card:first-child { padding: 20px 18px 12px; }
+  .editorial-job-card h3 { font-size: 17px; }
+}
+@media (max-width:360px) {
+  .editorial-wordmark { font-size: 18px; }
+  .editorial-brand img { height: 26px; }
+  .editorial-nav > .editorial-container { padding-inline: 12px; }
+}
+
+.editorial-filter summary { list-style: none; cursor: pointer; min-height: 36px; }
+.editorial-filter summary::-webkit-details-marker { display: none; }
+.editorial-filter details:not([open]) summary { min-height: 24px; }

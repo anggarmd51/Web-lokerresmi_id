@@ -24,10 +24,10 @@ export const JobCardSkeleton = () => (
 );
 
 /**
- * Grid skeleton untuk daftar feed lowongan
+ * Skeleton satu kolom untuk daftar feed lowongan
  */
 export const JobFeedSkeleton = ({ count = 6 }) => (
-  <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4 sm:gap-6">
+  <div className="flex flex-col gap-4 sm:gap-5" aria-label="Memuat daftar lowongan" aria-busy="true">
     {Array.from({ length: count }).map((_, idx) => (
       <JobCardSkeleton key={idx} />
     ))}
