@@ -21,6 +21,7 @@ import QuickShareButton from './QuickShareButton';
 import AICVCheckerModal from './AICVCheckerModal';
 import AICoverLetterModal from './AICoverLetterModal';
 import EmployerInquiryModal from './EmployerInquiryModal';
+import AdminPayments from './AdminPayments';
 import { displayDate, displayDeadline, displayJobType, displaySalary, displaySource } from '../lib/jobPresentation';
 
 const publicCategories = ['IT & Software', 'Sales & Marketing', 'Keuangan/Akuntansi', 'HRD/Personalia', 'Administrasi', 'Teknik/Engineering', 'Logistik/Operasional', 'Pelayanan Pelanggan'];
@@ -885,6 +886,7 @@ const SuperAdminDashboard = ({
         <button onClick={() => setActiveTab('stats')} className={`py-3 sm:py-3.5 border-b-2 transition cursor-pointer ${activeTab === 'stats' ? 'border-teal text-navy' : 'border-transparent text-slate-600 hover:text-navy'}`}>📊 Ringkasan Dashboard</button>
         <button onClick={() => setActiveTab('jobs')} className={`py-3 sm:py-3.5 border-b-2 transition cursor-pointer ${activeTab === 'jobs' ? 'border-teal text-navy' : 'border-transparent text-slate-600 hover:text-navy'}`}>💼 Manajemen Loker ({jobs.length})</button>
         <button onClick={() => setActiveTab('cv')} className={`py-3 sm:py-3.5 border-b-2 transition cursor-pointer ${activeTab === 'cv' ? 'border-teal text-navy' : 'border-transparent text-slate-600 hover:text-navy'}`}>📄 Pesanan CV Klien ({cvOrders.length})</button>
+        <button onClick={() => setActiveTab('payments')} className={`py-3 sm:py-3.5 border-b-2 transition cursor-pointer ${activeTab === 'payments' ? 'border-teal text-navy' : 'border-transparent text-slate-600 hover:text-navy'}`}>💳 Pembayaran CV &amp; B2B</button>
       </div>
 
       <div className="max-w-7xl mx-auto w-full p-3 sm:p-6 flex-1">
@@ -1130,6 +1132,7 @@ const SuperAdminDashboard = ({
                               <option value="Menunggu Review">Menunggu Review</option>
                               <option value="Sedang Dikerjakan">Sedang Dikerjakan</option>
                               <option value="Selesai">Selesai</option>
+                              <option value="Lunas" disabled={!order.paid_at}>Lunas</option>
                             </select>
                           </td>
                           <td className="p-3 text-right">
@@ -1150,6 +1153,8 @@ const SuperAdminDashboard = ({
             </div>
           </div>
         )}
+
+        {activeTab === 'payments' && <AdminPayments cvOrders={cvOrders} onRefreshCV={fetchCVOrders} />}
       </div>
 
       {confirmDelete && (

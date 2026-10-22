@@ -96,6 +96,6 @@ export function trackEmployerLead(packageName) {
   });
 }
 
-// Deliberately no purchase emitter: cv_orders has no verified amount/currency,
-// and employer inquiries have no persisted payment/order record. Catalog prices
-// in select_cv_package above are interest values, not earned revenue.
+// No browser purchase emitter: trusted paid transitions create database outbox
+// snapshots; api/purchase.js delivers them server-side, never as the admin GA user.
+// Catalog prices in select_cv_package are interest values, not earned revenue.
