@@ -1,6 +1,7 @@
 import { useEffect, useState, useCallback, useRef } from 'react';
 import { toast } from 'react-hot-toast';
 import { supabase } from '../lib/supabase';
+import { trackCVOrderLead } from '../lib/analytics';
 
 export default function useCVOrders({ isAdmin = false } = {}) {
   const [cvOrders, setCvOrders] = useState([]);
@@ -56,6 +57,7 @@ export default function useCVOrders({ isAdmin = false } = {}) {
       // Tanpa SELECT/RETURNING: pengunjung hanya punya hak INSERT.
       const { error } = await supabase.from('cv_orders').insert([payload]);
       if (error) throw error;
+      trackCVOrderLead(selectedPackage);
       if (isAdmin) await fetchCVOrders();
       const message = 'Pesanan CV berhasil dikirim! Tim kami akan segera menghubungi WhatsApp Anda.';
       toast.success(message);

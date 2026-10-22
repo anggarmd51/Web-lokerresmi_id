@@ -1,6 +1,6 @@
 import React, { useEffect, useRef, useState } from 'react';
 import { toast } from 'react-hot-toast';
-import { trackEmployerInquiryHandoff, trackFeaturedJobPackage } from '../lib/analytics';
+import { trackEmployerInquiryHandoff, trackFeaturedJobPackage, trackEmployerLead } from '../lib/analytics';
 
 // Gunakan kontak admin yang sama dengan alur pemesanan CV.
 const ADMIN_WHATSAPP = '6285179905019';
@@ -71,6 +71,7 @@ export default function EmployerInquiryModal({ isOpen, onClose }) {
       trackEmployerInquiryHandoff(packageName, 'whatsapp');
       setInquiryUrl(url);
       window.open(url, '_blank', 'noopener,noreferrer');
+      trackEmployerLead(packageName);
     } catch (error) {
       toast.error(error.message);
     }

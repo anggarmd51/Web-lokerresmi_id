@@ -63,3 +63,39 @@ export function trackCVPackage(packageName, source) {
   if (value !== undefined) params.value = value;
   return trackEvent('select_cv_package', params);
 }
+
+// These are catalog identifiers, never user-supplied form text or revenue.
+const CV_PACKAGE_IDS = Object.freeze({
+  'Paket Express (Rp 49.000)': 'cv_express',
+  'Paket Profesional (Rp 99.000)': 'cv_professional',
+  'Paket VIP Mentoring (Rp 249.000)': 'cv_vip',
+});
+const EMPLOYER_PACKAGE_IDS = Object.freeze({
+  Standard: 'employer_standard',
+  'Featured Job': 'employer_featured',
+  'Paid placement': 'employer_paid_placement',
+});
+
+/** A confirmed INSERT is a lead, not evidence that any money was received. */
+export function trackCVOrderLead(packageName) {
+  return trackEvent('generate_lead', {
+    lead_type: 'cv_order',
+    package_id: Object.hasOwn(CV_PACKAGE_IDS, packageName) ? CV_PACKAGE_IDS[packageName] : 'cv_custom',
+    source: 'order_form',
+    lead_stage: 'order_created',
+  });
+}
+
+/** WhatsApp handoff is not proof of message delivery, order creation, or payment. */
+export function trackEmployerLead(packageName) {
+  return trackEvent('generate_lead', {
+    lead_type: 'employer_inquiry',
+    package_id: Object.hasOwn(EMPLOYER_PACKAGE_IDS, packageName) ? EMPLOYER_PACKAGE_IDS[packageName] : 'employer_custom',
+    source: 'whatsapp',
+    lead_stage: 'handoff',
+  });
+}
+
+// Deliberately no purchase emitter: cv_orders has no verified amount/currency,
+// and employer inquiries have no persisted payment/order record. Catalog prices
+// in select_cv_package above are interest values, not earned revenue.

@@ -81,6 +81,7 @@ async function loadEmployerModal() {
   const analytics = synthetic('analytics', {
     trackFeaturedJobPackage: (...args) => analyticsCalls.push(['package', ...args]),
     trackEmployerInquiryHandoff: (...args) => analyticsCalls.push(['handoff', ...args]),
+    trackEmployerLead: (...args) => analyticsCalls.push(['lead', ...args]),
   });
   const namespace = await loadJsx(fileURLToPath(new URL('src/components/EmployerInquiryModal.jsx', root)), {
     react: react.module,
