@@ -1333,7 +1333,7 @@ export default function JobBoard() {
   }
 
   return (
-    <div className="min-h-screen bg-light dark:bg-slate-950 flex flex-col justify-between transition-colors duration-200">
+    <div className="editorial-page min-h-screen bg-light dark:bg-slate-950 flex flex-col justify-between">
       {/* Google Jobs Structured Data (Schema.org JobPosting) */}
       <JobPostingSchema job={selectedJob} />
 
