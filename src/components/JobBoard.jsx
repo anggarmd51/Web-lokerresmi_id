@@ -82,7 +82,7 @@ const Navbar = ({ onOpenPostJob, onOpenAdminLogin, isAdmin, isDark, toggleDarkMo
   );
 };
 
-const Hero = ({ searchTerm, setSearchTerm, locationTerm, setLocationTerm, selectedTag, setSelectedTag, landing, activeCount }) => {
+const Hero = ({ searchTerm, setSearchTerm, locationTerm, setLocationTerm, landing, activeCount }) => {
   return (
     <section id="top" className="editorial-hero px-4 py-8 text-navy">
       <div className="editorial-container relative mx-auto max-w-7xl">
@@ -246,10 +246,10 @@ const CVServicePromo = ({ onSelectPackage, onOpenAIChecker, onOpenCoverLetter })
 
 const CommunitySection = () => (
   <div id="community" className="py-8 sm:py-12 max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 text-center">
-    <div className="bg-teal/10 border border-teal/20 rounded-2xl p-6 sm:p-12 shadow-xs">
-      <h2 className="text-xl sm:text-3xl font-bold text-navy mb-2 sm:mb-3">Gabung Komunitas Loker Resmi (Lokerresmi.id)</h2>
-      <p className="text-slate-600 max-w-xl mx-auto mb-5 sm:mb-6 text-xs sm:text-sm leading-relaxed">Ikuti kanal komunitas untuk membaca pembaruan lowongan dan informasi karier.</p>
-      <a href="https://chat.whatsapp.com/E00jf6uXmuF742oQjkvn39?s=cl&p=a&mlu=4" target="_blank" rel="noopener noreferrer" className="bg-teal hover:bg-teal/90 active:bg-teal text-white font-bold px-6 sm:px-8 py-3.5 sm:py-3 rounded-xl shadow-xs transition inline-block w-full sm:w-auto text-xs sm:text-sm cursor-pointer active:scale-98">Gabung Grup Komunitas Loker</a>
+    <div className="bg-teal/10 dark:bg-teal/20 border border-teal/20 dark:border-teal/40 rounded-2xl p-6 sm:p-12 shadow-xs">
+      <h2 className="text-xl sm:text-3xl font-bold text-navy dark:text-slate-100 mb-2 sm:mb-3">Gabung Komunitas Loker Resmi (Lokerresmi.id)</h2>
+      <p className="text-slate-600 dark:text-slate-200 max-w-xl mx-auto mb-5 sm:mb-6 text-xs sm:text-sm leading-relaxed">Ikuti kanal komunitas untuk membaca pembaruan lowongan dan informasi karier.</p>
+      <a href="https://chat.whatsapp.com/E00jf6uXmuF742oQjkvn39?s=cl&p=a&mlu=4" target="_blank" rel="noopener noreferrer" className="bg-teal hover:bg-[#115E59] active:bg-[#134E4A] text-white font-bold px-6 sm:px-8 py-3.5 sm:py-3 rounded-xl shadow-xs transition inline-block w-full sm:w-auto text-xs sm:text-sm cursor-pointer active:scale-98">Gabung Grup Komunitas Loker</a>
     </div>
   </div>
 );
@@ -294,7 +294,7 @@ const Footer = ({ onOpenEmployerInquiry }) => (
         </a>
       </div>
 
-      <p className="text-slate-500 text-xs">© {new Date().getFullYear()} Lokerresmi.id. Seluruh hak cipta dilindungi.</p>
+      <p className="text-slate-200 text-xs">© {new Date().getFullYear()} Lokerresmi.id. Seluruh hak cipta dilindungi.</p>
     </div>
   </footer>
 );
@@ -1350,7 +1350,7 @@ export default function JobBoard() {
           isDark={isDark}
           toggleDarkMode={toggleDarkMode}
         />
-        <Hero activeCount={publicJobs.length} searchTerm={searchTerm} setSearchTerm={setSearchTerm} locationTerm={locationTerm} setLocationTerm={setLocationTerm} selectedTag={selectedTag} setSelectedTag={setSelectedTag} landing={landing} />
+        <Hero activeCount={publicJobs.length} searchTerm={searchTerm} setSearchTerm={setSearchTerm} locationTerm={locationTerm} setLocationTerm={setLocationTerm} landing={landing} />
         <StatsBar totalJobs={publicJobs.length} />
         <JobFeed
           jobs={landingJobs}

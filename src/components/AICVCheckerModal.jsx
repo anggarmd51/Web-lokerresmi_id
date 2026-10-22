@@ -19,53 +19,6 @@ import { toast } from 'react-hot-toast';
 import { requestGemini } from '../lib/gemini';
 import { SAMPLE_PDF_BASE64, decodeSamplePdf } from '../lib/sampleCv';
 
-// Client-side intelligent simulator fallback when API Key is absent, network drops, or rate limit occurs
-const simulateAnalysis = (fileName = 'CV_Dokumen.pdf', jobDescription = '', isFallback = true) => {
-  let score = 74;
-  const strengths = [
-    'Format dan tata letak resume PDF terbaca terstruktur oleh parser bot ATS.',
-    'Urutan kronologis riwayat pengalaman kerja dan pendidikan tersaji runtut.',
-    'Informasi kontak dasar (header dokumen) berhasil dideteksi dengan baik.',
-  ];
-  const weaknesses = [
-    'Beberapa pencapaian masih deskriptif tanpa metrik kuantitatif terukur (angka atau persentase).',
-    'Kepadatan kata kunci teknis (hard skills) masih dapat dioptimalkan sesuai deskripsi lowongan target.',
-  ];
-  const missing_keywords = [];
-  const recommendations = [
-    'Gunakan format STAR (Situation, Task, Action, Result) pada setiap rincian tanggung jawab.',
-    'Sertakan pencapaian terukur dengan angka konkret (misal: "Meningkatkan efisiensi proses hingga 25%").',
-    'Hindari tabel bersarang, kolom ganda rumit, atau ornamen visual non-standar yang berisiko mengaburkan pembacaan scanner ATS.',
-  ];
-
-  if (jobDescription && jobDescription.trim()) {
-    const jobWords = jobDescription.toLowerCase().match(/\b[a-z]{4,}\b/g) || [];
-    const unmatched = jobWords
-      .filter((w) => !['yang', 'untuk', 'dengan', 'dalam', 'pada', 'serta', 'dapat'].includes(w))
-      .slice(0, 5);
-    if (unmatched.length > 0) {
-      missing_keywords.push(...unmatched.map((w) => w.charAt(0).toUpperCase() + w.slice(1)));
-    }
-  }
-
-  if (missing_keywords.length === 0) {
-    missing_keywords.push('Problem Solving', 'Data Analytics', 'Cross-functional Collaboration', 'Project Management');
-  }
-
-  const summary =
-    'CV PDF Anda memiliki keterbacaan struktur dasar yang cukup baik. Melengkapi metrik pencapaian kuantitatif dan kata kunci industri spesifik akan meningkatkan peluang Anda lolos seleksi HR hingga 3x lipat.';
-
-  return {
-    score,
-    summary,
-    strengths,
-    weaknesses,
-    missing_keywords,
-    recommendations,
-    isFallback: Boolean(isFallback),
-  };
-};
-
 
 // Helper to convert File to base64 using native FileReader with safety timeout guard & magic bytes verification
 const readFileAsBase64 = (file, timeoutMs = 10000) => {
@@ -242,19 +195,23 @@ export default function AICVCheckerModal({ isOpen, onClose, onOpenOrderModal }) 
 
       const trimmedJobDesc = jobDesc ? jobDesc.trim() : '';
       const data = await analyzePdfWithGemini(base64Data, trimmedJobDesc);
-      setResult(data);
-
       if (data?.isFallback) {
-        toast('Menggunakan analisis cepat (Mode Standby).', { icon: '⚡' });
+        setResult({
+          error: true,
+          message: 'Layanan AI mengembalikan mode cadangan, sehingga analisis CV terverifikasi tidak tersedia.',
+        });
+        toast.error('Analisis CV belum tersedia. Silakan coba lagi.');
       } else {
+        setResult(data);
         toast.success('Analisis dokumen CV selesai! Silakan lihat skor ATS Anda.');
       }
     } catch (err) {
-      console.warn('PDF Analysis Notice (using fallback):', err?.message || err);
-      // Guarantee fallback so user is NEVER left hanging or stuck
-      const fallbackData = simulateAnalysis(selectedFile?.name, jobDesc ? jobDesc.trim() : '', true);
-      setResult(fallbackData);
-      toast('Menggunakan analisis cepat (Mode Standby).', { icon: '⚡' });
+      console.warn('PDF Analysis Error:', err?.code || err?.message || 'unknown error');
+      setResult({
+        error: true,
+        message: err?.message || 'Layanan AI tidak dapat menganalisis CV saat ini.',
+      });
+      toast.error('Analisis CV gagal. Tidak ada skor yang dibuat.');
     } finally {
       // GUARANTEED STATE RESET: Always clear analyzing loading state
       setAnalyzing(false);
@@ -485,20 +442,25 @@ export default function AICVCheckerModal({ isOpen, onClose, onOpenOrderModal }) 
         ) : (
           /* RESULT VIEW */
           <div className="mt-4 space-y-4 sm:space-y-5 text-xs sm:text-sm">
-            {/* Warning Banner when Fallback Mode Standby is active */}
-            {result.isFallback && (
-              <div className="bg-amber-50 dark:bg-amber-950/40 border border-amber-300 dark:border-amber-700/60 rounded-xl p-3 sm:p-3.5 flex items-start gap-2.5 text-amber-900 dark:text-amber-200 text-xs">
-                <AlertTriangle className="h-4 w-4 shrink-0 text-amber-600 dark:text-amber-400 mt-0.5" />
-                <div>
-                  <span className="font-bold text-amber-800 dark:text-amber-300">
-                    Menggunakan analisis cepat (Mode Standby)
-                  </span>
-                  <p className="text-[11px] text-amber-700/90 dark:text-amber-300/80 mt-0.5">
-                    Layanan AI utama sedang sibuk atau melampaui batas waktu respons. Hasil evaluasi skor dan kata kunci ATS tetap disajikan menggunakan model analisis heuristik komprehensif.
-                  </p>
+            {result.error ? (
+              <div role="alert" className="bg-rose-50 dark:bg-rose-950/30 border border-rose-300 dark:border-rose-800 rounded-xl p-4 sm:p-5 text-rose-900 dark:text-rose-200">
+                <div className="flex items-start gap-2.5">
+                  <AlertTriangle className="h-5 w-5 shrink-0 text-rose-600 dark:text-rose-400 mt-0.5" />
+                  <div>
+                    <h3 className="font-bold text-sm sm:text-base">Analisis CV tidak tersedia</h3>
+                    <p className="mt-1 text-xs sm:text-sm">{result.message}</p>
+                    <p className="mt-2 text-xs">Tidak ada skor atau analisis yang dibuat.</p>
+                  </div>
+                </div>
+                <div className="flex items-center justify-between mt-4">
+                  <button type="button" onClick={handleAnalyze} disabled={analyzing} className="inline-flex items-center gap-1.5 rounded-lg bg-rose-600 px-3 py-2 text-xs font-bold text-white hover:bg-rose-700 disabled:opacity-50">
+                    <RotateCcw className="h-3.5 w-3.5" /> Coba lagi
+                  </button>
+                  <button type="button" onClick={onClose} className="text-xs text-slate-500 hover:underline">Tutup Jendela</button>
                 </div>
               </div>
-            )}
+            ) : (
+            <>
 
             {/* Score Card Banner */}
             <div className={`p-4 sm:p-5 rounded-2xl border ${scoreTheme.bg} ${scoreTheme.border} flex flex-col sm:flex-row items-center justify-between gap-4`}>
@@ -654,6 +616,8 @@ export default function AICVCheckerModal({ isOpen, onClose, onOpenOrderModal }) 
                 Tutup Jendela
               </button>
             </div>
+            </>
+            )}
           </div>
         )}
       </div>

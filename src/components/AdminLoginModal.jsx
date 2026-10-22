@@ -56,37 +56,37 @@ export default function AdminLoginModal({ isOpen, onClose, onSuccess, onLoginSuc
 
   return (
     <div className="fixed inset-0 bg-black/60 backdrop-blur-sm flex items-center justify-center z-50 p-4">
-      <div className="bg-white rounded-2xl shadow-2xl max-w-md w-full p-6 relative">
+      <div className="bg-white dark:bg-slate-900 rounded-2xl shadow-2xl max-w-md w-full p-6 relative text-slate-900 dark:text-slate-100">
         <button
           type="button"
           onClick={onClose}
-          className="absolute top-4 right-4 text-slate-400 hover:text-slate-600 font-bold text-xl"
+          className="absolute top-4 right-4 text-slate-600 dark:text-slate-300 hover:text-slate-900 dark:hover:text-white font-bold text-xl"
         >
           ✕
         </button>
-        <h2 className="text-xl font-bold text-navy mb-4">Login Superadmin</h2>
+        <h2 className="text-xl font-bold text-navy dark:text-slate-100 mb-4">Login Superadmin</h2>
         
         <form onSubmit={handleLogin} className="space-y-4 text-sm">
           <div>
-            <label className="block font-semibold mb-1 text-slate-700">Email</label>
+            <label className="block font-semibold mb-1 text-slate-700 dark:text-slate-200">Email</label>
             <input
               type="email"
               value={email}
               onChange={(e) => setEmail(e.target.value)}
               required
-              className="w-full px-3 py-2.5 border border-slate-300 rounded-lg text-sm focus:ring-2 focus:ring-teal outline-none"
+              className="w-full px-3 py-2.5 border border-slate-300 dark:border-slate-500 rounded-lg text-sm text-slate-900 dark:text-slate-50 bg-white dark:bg-slate-800 placeholder:text-slate-500 dark:placeholder:text-slate-300 focus:ring-2 focus:ring-teal outline-none"
               placeholder="email@domain.com"
             />
           </div>
 
           <div>
-            <label className="block font-semibold mb-1 text-slate-700">Password</label>
+            <label className="block font-semibold mb-1 text-slate-700 dark:text-slate-200">Password</label>
             <input
               type="password"
               value={password}
               onChange={(e) => setPassword(e.target.value)}
               required
-              className="w-full px-3 py-2.5 border border-slate-300 rounded-lg text-sm focus:ring-2 focus:ring-teal outline-none"
+              className="w-full px-3 py-2.5 border border-slate-300 dark:border-slate-500 rounded-lg text-sm text-slate-900 dark:text-slate-50 bg-white dark:bg-slate-800 placeholder:text-slate-500 dark:placeholder:text-slate-300 focus:ring-2 focus:ring-teal outline-none"
               placeholder="••••••••"
             />
           </div>
@@ -95,7 +95,7 @@ export default function AdminLoginModal({ isOpen, onClose, onSuccess, onLoginSuc
             <button
               type="button"
               onClick={onClose}
-              className="px-4 py-2 bg-slate-100 text-slate-600 text-sm rounded-lg hover:bg-slate-200 font-medium"
+              className="px-4 py-2 bg-slate-100 dark:bg-slate-700 text-slate-700 dark:text-slate-100 text-sm rounded-lg hover:bg-slate-200 dark:hover:bg-slate-600 font-medium"
             >
               Batal
             </button>

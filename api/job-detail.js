@@ -88,13 +88,22 @@ export default async function handler(request, response) {
   const queryId = request?.query?.id ?? requestUrl.searchParams.get('id');
   const rawId = match?.[1] ?? (Array.isArray(queryId) ? queryId[0] : queryId);
   if (!rawId) return send(response, 404, '<!doctype html><title>404</title><h1>Not found</h1>');
+  let id;
+  try {
+    id = decodeURIComponent(String(rawId));
+  } catch {
+    return send(response, 404, '<!doctype html><title>404</title><h1>Lowongan tidak ditemukan</h1>');
+  }
+  // jobs.id is a positive PostgreSQL bigint; reject malformed/out-of-range IDs
+  // before database access, rather than turning a PostgREST cast error into 503.
+  if (!/^[0-9]{1,19}$/.test(id) || BigInt(id) < 1n || BigInt(id) > 9223372036854775807n) {
+    return send(response, 404, '<!doctype html><title>404</title><h1>Lowongan tidak ditemukan</h1>');
+  }
   try {
     const env = globalThis.process?.env ?? {};
     const supabaseUrl = env.VITE_SUPABASE_URL || env.SUPABASE_URL;
     const anonKey = env.VITE_SUPABASE_ANON_KEY || env.SUPABASE_ANON_KEY;
     if (!supabaseUrl || !anonKey) throw new Error('Supabase public environment is not configured');
-    const id = decodeURIComponent(String(rawId));
-    if (!id || /[/\\\s]/.test(id)) return send(response, 404, '<!doctype html><title>404</title><h1>Lowongan tidak ditemukan</h1>');
     const job = await fetchJob(globalThis.fetch, supabaseUrl, anonKey, id);
     if (!job) return send(response, 404, '<!doctype html><title>404</title><h1>Lowongan tidak ditemukan</h1>');
     const template = await readFile(TEMPLATE_PATH, 'utf8');

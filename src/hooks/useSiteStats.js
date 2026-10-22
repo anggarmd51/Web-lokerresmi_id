@@ -52,57 +52,10 @@ export default function useSiteStats() {
     sessionStorage.setItem(SESSION_STORAGE_KEY, 'true');
 
     try {
-      // 1. Coba panggil RPC increment_site_views jika tersedia
       const { data: rpcData, error: rpcErr } = await supabase.rpc('increment_site_views');
 
       if (!rpcErr && typeof rpcData === 'number') {
         setTotalViews(rpcData);
-        return;
-      }
-
-      // 2. Jika RPC belum dibuat atau ditolak, lakukan operasi table update / insert langsung
-      const { data: existingRow, error: checkErr } = await supabase
-        .from('site_stats')
-        .select('*')
-        .limit(1)
-        .maybeSingle();
-
-      if (checkErr) {
-        return;
-      }
-
-      if (existingRow) {
-        const currentCount = Number(existingRow.total_views || 0);
-        const newCount = currentCount + 1;
-
-        const updatePayload = {
-          total_views: newCount,
-          updated_at: new Date().toISOString(),
-        };
-
-        const { error: updateErr } = await supabase
-          .from('site_stats')
-          .update(updatePayload)
-          .eq('id', existingRow.id);
-
-        if (!updateErr) {
-          setTotalViews(newCount);
-        }
-      } else {
-        // Jika tabel kosong, insert baris pertama dengan nilai 1
-        const insertPayload = {
-          id: 1,
-          total_views: 1,
-          updated_at: new Date().toISOString(),
-        };
-
-        const { error: insertErr } = await supabase
-          .from('site_stats')
-          .insert([insertPayload]);
-
-        if (!insertErr) {
-          setTotalViews(1);
-        }
       }
     } catch {
       // ignore

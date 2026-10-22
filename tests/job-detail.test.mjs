@@ -35,7 +35,7 @@ test('incomplete job is rendered noindex and inactive/missing responses are no-s
 
 test('HTTP 404 and 503 detail responses are explicitly no-store', async () => {
   const notFound = responseMock();
-  await handler({ url: '/lowongan/x-1' }, notFound);
+  await handler({ url: '/lowongan/48' }, notFound);
   assert.equal(notFound.statusCode, 503);
   assert.equal(notFound.headers['Cache-Control'], 'no-store');
   const malformed = responseMock();
@@ -52,16 +52,16 @@ test('detail handler accepts both pretty-path and rewritten query requests', asy
   process.env.VITE_SUPABASE_ANON_KEY = 'anon';
   globalThis.fetch = async (url) => {
     requested.push(new URL(url).searchParams.get('id'));
-    return { ok: true, async json() { return [{ ...eligible }]; } };
+    return { ok: true, async json() { return [{ ...eligible, id: '48' }]; } };
   };
   try {
-    for (const request of [{ url: '/lowongan/x-1' }, { url: '/api/job-detail.js?id=x-1' }]) {
+    for (const request of [{ url: '/lowongan/48' }, { url: '/api/job-detail.js?id=48' }]) {
       const response = responseMock();
       await handler(request, response);
       assert.equal(response.statusCode, 200);
-      assert.match(response.body, /data-job-id="x-1"/);
+      assert.match(response.body, /data-job-id="48"/);
     }
-    assert.deepEqual(requested, ['eq.x-1', 'eq.x-1']);
+    assert.deepEqual(requested, ['eq.48', 'eq.48']);
   } finally {
     process.env = previousEnv;
     globalThis.fetch = previousFetch;
@@ -75,4 +75,38 @@ test('valid detail loading metadata remains indexable on the client', async () =
   updatePageMetadata(null, readJobRoute({ pathname: '/lowongan/x-1', hash: '' }), { loading: true });
   assert.equal(document.head.querySelector('meta[name="robots"]').attributes.content, 'index,follow');
   delete globalThis.document;
+});
+
+test('invalid bigint IDs return 404 without any database request', async () => {
+  const previousFetch = globalThis.fetch;
+  let calls = 0;
+  globalThis.fetch = async () => { calls += 1; throw new Error('must not fetch'); };
+  try {
+    for (const id of ['abc', 'x-1', '1.5', '-1', '0', '%20', '%2F', '%5C', '%ZZ', '9223372036854775808', '9'.repeat(100)]) {
+      for (const url of [`/lowongan/${id}`, `/api/job-detail.js?id=${id}`]) {
+        const response = responseMock();
+        await handler({ url }, response);
+        assert.equal(response.statusCode, 404, url);
+        assert.equal(response.headers['Cache-Control'], 'no-store');
+      }
+    }
+    assert.equal(calls, 0);
+  } finally { globalThis.fetch = previousFetch; }
+});
+
+test('valid bigint IDs retain 503 on real backend failure and 404 when missing', async () => {
+  const previousEnv = { ...process.env };
+  const previousFetch = globalThis.fetch;
+  process.env.VITE_SUPABASE_URL = 'https://project.supabase.co';
+  process.env.VITE_SUPABASE_ANON_KEY = 'anon';
+  try {
+    globalThis.fetch = async () => ({ ok: false, status: 500 });
+    const failed = responseMock();
+    await handler({ url: '/lowongan/48' }, failed);
+    assert.equal(failed.statusCode, 503);
+    globalThis.fetch = async () => ({ ok: true, json: async () => [] });
+    const missing = responseMock();
+    await handler({ url: '/lowongan/9223372036854775807' }, missing);
+    assert.equal(missing.statusCode, 404);
+  } finally { process.env = previousEnv; globalThis.fetch = previousFetch; }
 });
