@@ -140,3 +140,6 @@
 .editorial-filter summary { list-style: none; cursor: pointer; min-height: 36px; }
 .editorial-filter summary::-webkit-details-marker { display: none; }
 .editorial-filter details:not([open]) summary { min-height: 24px; }
+
+/* Dark hover must not reuse dark teal intended for white surfaces. */
+.dark .editorial-job-card:hover h3 { color: #7DD3C7; }

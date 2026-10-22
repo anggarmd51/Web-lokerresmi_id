@@ -19,6 +19,7 @@ probe = """() => {
     note: '.editorial-jobs > div:nth-child(2) > div > p', filter: '.editorial-filter summary',
     jobTitle: '.editorial-job-card h3', company: '.editorial-job-card p',
     source: '.editorial-source-meta', action: '.editorial-job-card a',
+    salaryLabel: '.editorial-job-card b:first-child', deadlineLabel: '.editorial-job-card .mt-4 > span:last-child > b',
   };
   return Object.entries(selectors).map(([name, selector]) => {
     const el = document.querySelector(selector); if (!el) throw Error('Missing '+selector);
@@ -81,6 +82,14 @@ with sync_playwright() as p:
         minimum = min(row['ratio'] for frame in frames for row in frame)
         report['toggles'].append({'theme': theme, 'frames': len(frames), 'minimumRatio': minimum})
         report['stable'][theme] = frames[-1]
+        page.locator('.editorial-job-card').first.hover()
+        report['stable'][theme+'Hover'] = measure(page.evaluate(probe))
+        page.mouse.move(0, 0)
+        page.get_by_label('Posisi atau perusahaan', exact=True).fill('qa-empty-no-match-987')
+        expect(page.locator('.editorial-empty')).to_be_visible()
+        report['stable'][theme+'Empty'] = measure(page.locator('.editorial-empty p').evaluate('(el)=>[{name:"emptyText",color:getComputedStyle(el).color,background:getComputedStyle(el.parentElement).backgroundColor}]'))
+        page.get_by_label('Posisi atau perusahaan', exact=True).fill('')
+        expect(page.locator('.editorial-job-card').first).to_be_visible()
         print(theme, 'minimum frame contrast', minimum, flush=True)
         if index < 2:
             page.evaluate('window.scrollTo({top:0,behavior:"instant"})')
