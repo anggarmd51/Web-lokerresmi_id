@@ -192,7 +192,7 @@ const CVServicePromo = ({ onSelectPackage, onOpenAIChecker, onOpenCoverLetter })
           </div>
 
           {/* Tier 2: Paket Profesional (Populer) */}
-          <div className="order-1 md:order-2 min-w-0 bg-white dark:bg-slate-900 p-5 sm:p-6 rounded-2xl border-2 border-teal relative flex flex-col justify-between shadow-xl transition hover:border-teal/80">
+          <div className="order-1 md:order-2 min-w-0 bg-white dark:bg-slate-900 p-5 sm:p-6 rounded-2xl border-2 border-teal relative flex flex-col justify-between shadow-xl transition-[border-color] hover:border-teal/80">
             <div className="absolute -top-3 right-5 bg-teal text-white text-[10px] sm:text-xs font-black px-3 py-0.5 rounded-full uppercase tracking-wider shadow-sm">
               Populer
             </div>

@@ -51,6 +51,7 @@ test('CVServicePromo mempertahankan kelas kontras, tiga kartu, dan handler bisni
   const promo = source.slice(start, end);
 
   assert.match(promo, /id="cv-service"[^>]*className="[^"]*bg-slate-50[^\"]*dark:bg-slate-950[^\"]*text-navy[^\"]*dark:text-slate-100/);
+  assert.equal((promo.match(/transition-\[border-color\]/g) ?? []).length, 3, 'ketiga kartu mengganti latar tema tanpa transisi kontras rendah');
   assert.equal((promo.match(/bg-white dark:bg-slate-900/g) ?? []).length, 3, 'tepat tiga kartu light/dark');
   assert.equal((promo.match(/text-navy dark:text-slate-100/g) ?? []).length, 8, 'heading/price/section menggunakan teks light/dark');
   assert.equal((promo.match(/text-slate-700 dark:text-slate-200/g) ?? []).length, 3, 'tepat tiga daftar fitur');
